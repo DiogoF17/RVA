@@ -9,12 +9,12 @@ cardImages = {cards.ACE_SPADES: {"fileName": "./cards_normal/1.png"},
               cards.ACE_CLUBS: {"fileName": "./cards_normal/3.png"},
               cards.ACE_DIAMONDS: {"fileName": "./cards_normal/4.png"}}
 
+MIN_AREA_OF_CARDS = 5000
+
 def setUp():
     for card in cardImages:
         img = cv.imread(cardImages[card]["fileName"])
         cardImages[card]["img"] = img
-
-MIN_AREA_OF_CARDS = 5000
 
 def binarize(img, thresholdValue = 127):
     grayScaleImg = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
@@ -75,6 +75,8 @@ def detectCards(img):
 # using FEATURE MATCHING
 # return: {cardName: img}
 def identifyCards(round):
+    pass
+    
     detectedCard = None
     numberOfMatches = -1
     
@@ -137,9 +139,9 @@ while True:
     # Where are the cards
     cards = detectCards(frame)
     # # Which card is which
-    # cardsNames = identifyCards(cards)
+    cardsNames = identifyCards(cards)
     # # The person that played each card
-    # playersAssociatedWithEachCard = associatePlayersWithCards(cardsNames)
+    playersAssociatedWithEachCard = associatePlayersWithCards(cardsNames)
 
     # game.gameRound(playersAssociatedWithEachCard)
     # roundWinner = game.getRoundWinner()
