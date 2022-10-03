@@ -3,13 +3,18 @@ import numpy as np
 import game.game as gamePackage
 import camera.remoteWebCam as remoteWebCamPackage
 import game.cards as cards
+import random as rng
+
+# =============================GLOBAL VARIABLES================================
 
 cardImages = {cards.ACE_SPADES: {"fileName": "./cards_normal/1.png"},
               cards.ACE_HEARTS: {"fileName": "./cards_normal/2.png"},
               cards.ACE_CLUBS: {"fileName": "./cards_normal/3.png"},
               cards.ACE_DIAMONDS: {"fileName": "./cards_normal/4.png"}}
-
+QUIT_KEY = ord("q")
 MIN_AREA_OF_CARDS = 5000
+
+# ===============================FUNCTIONS=====================================
 
 def setUp():
     for card in cardImages:
@@ -28,49 +33,39 @@ def detectConnectedComponents(img):
     for i in range(1, numLabels):            
         if stats[i, cv.CC_STAT_AREA] >= MIN_AREA_OF_CARDS:
             componentMask = (labels == i).astype("uint8") * 255
-            # componentMask = fillComponent(componentMask, 255)
             connectedComponents.append(componentMask)
     
     return connectedComponents
 
-def fillComponent(component, fillColor):
-    for i in range(len(component)):
-        # find first index different from 0
-        firstIndex = -1
-        for j in range(len(component[i])):
-            if component[i][j] != 0:
-                firstIndex = j
-                
-        # find last index different from 0
-        lastIndex = -1
-        for j in range(len(component[i]) - 1, -1, -1):
-            if component[i][j] != 0:
-                lastIndex = j
-                
-        component[i][firstIndex : lastIndex + 1] = fillColor
-        
-    return component
-
-def detectQuadrilaterals(imgShape, components):    
-    quadrilaterals = np.zeros(imgShape, dtype="uint8")
+def detectQuadrilaterals(img, components):
+    quadrilaterals = []
     
     for component in components:
         contours, _ = cv.findContours(image=component, mode=cv.RETR_TREE, method=cv.CHAIN_APPROX_NONE)
-        numberOfSides = cv.approxPolyDP(contours[0], 0.04 * cv.arcLength(contours[0], True), True)
-    
-        # if len(numberOfSides) == 4:
-        quadrilaterals = cv.bitwise_or(quadrilaterals, component)
-            
+        coordinates = cv.approxPolyDP(contours[0], 0.04 * cv.arcLength(contours[0], True), True)
+
+        if len(coordinates) == 4:
+            # color = (rng.randint(0,256), rng.randint(0,256), rng.randint(0,256))
+            # cv.drawContours(img, contours, 0, color, 2, cv.LINE_8)
+            # for coord in coordinates:
+            #     cv.circle(img, (coord[0][0],coord[0][1]), radius=10, color=color, thickness=-1)
+            quadrilaterals.append(formatCoordinates(coordinates))
     return quadrilaterals
 
+# remove unecessary dimension
+# [[[32,34]],[[23,67]]] to [[32,34],[23,67]]          
+def formatCoordinates(coordinates):
+    formatedCoord = []
+    for coord in coordinates:
+        formatedCoord.append(coord[0])
+    return formatedCoord
+    
 # return: img with only the cards
 def detectCards(img):
-    binarized = binarize(img, 100)
+    binarized = binarize(img)
     connectedComponents = detectConnectedComponents(binarized)
-    quadrilaterals = detectQuadrilaterals(binarized.shape, connectedComponents)
-    cards = cv.bitwise_and(img, img, mask = quadrilaterals)
-    
-    return cards
+    quadrilaterals = detectQuadrilaterals(img, connectedComponents)
+    return img, quadrilaterals
 
 # using FEATURE MATCHING
 # return: {cardName: img}
@@ -118,11 +113,9 @@ def identifyCards(round):
 def associatePlayersWithCards(cards):
     pass
 
-# ==================================================================
+# ===================================MAIN======================================
 
 setUp()
-
-QUIT_KEY = ord("q")
 
 game = gamePackage.Game()
 camera = remoteWebCamPackage.RemoteWebCam()
@@ -137,16 +130,16 @@ while True:
     frame = camera.getFrame()
     
     # Where are the cards
-    cards = detectCards(frame)
+    frame, possibleCardsPosition = detectCards(frame)
     # # Which card is which
-    cardsNames = identifyCards(cards)
+    # cardsNames = identifyCards(cards)
     # # The person that played each card
-    playersAssociatedWithEachCard = associatePlayersWithCards(cardsNames)
+    # playersAssociatedWithEachCard = associatePlayersWithCards(cardsNames)
 
     # game.gameRound(playersAssociatedWithEachCard)
     # roundWinner = game.getRoundWinner()
     
-    cv.imshow("video", cards)
+    cv.imshow("video", frame)
     
     key = cv.waitKey(1)
     if key == QUIT_KEY:
