@@ -27,6 +27,9 @@ class WhistGame:
 
             print(f"Invalid Number Of Players: {self.numberOfPlayers}, should be either 2 or 4")
 
+    def getCardsPerRound(self):
+        return self.numberOfPlayers
+
     def validNumberOfPlayers(self, numberOfPlayers):
         return numberOfPlayers == 2 or numberOfPlayers == 4
         

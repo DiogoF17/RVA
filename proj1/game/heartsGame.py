@@ -67,6 +67,9 @@ class HeartsGame:
         
         self.lastRound = []
         self.roundWinner = None
+
+    def getCardsPerRound(self):
+        return 4
         
     def gameRound(self, round):
         if not self.isNewRound(round):

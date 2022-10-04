@@ -32,6 +32,9 @@ class Game:
     def validOption(self, option, maxValue):
         return option >= 1 and option <= maxValue
 
+    def getCardsPerRound(self):
+        return self.game.getCardsPerRound()
+
     def gameRound(self, cards):
         self.game.gameRound(cards)
         

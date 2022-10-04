@@ -4,17 +4,23 @@ import game.game as gamePackage
 import camera.remoteWebCam as remoteWebCamPackage
 import game.cards as cards
 
-cardImages = {cards.ACE_SPADES: {"fileName": "./cards_normal/1.png"},
+templateCards = {cards.ACE_SPADES: {"fileName": "./cards_normal/1.png"},
               cards.ACE_HEARTS: {"fileName": "./cards_normal/2.png"},
               cards.ACE_CLUBS: {"fileName": "./cards_normal/3.png"},
               cards.ACE_DIAMONDS: {"fileName": "./cards_normal/4.png"}}
 
 MIN_AREA_OF_CARDS = 5000
 
-def setUp():
-    for card in cardImages:
-        img = cv.imread(cardImages[card]["fileName"])
-        cardImages[card]["img"] = img
+def setUp(featureTracking = True):
+    sift = cv.SIFT_create()
+    
+    for card in templateCards:
+        img = cv.imread(templateCards[card]["fileName"])
+        templateCards[card]["img"] = img
+        
+        if featureTracking:
+            _, descriptor = sift.detectAndCompute(img, None)
+            templateCards[card]["descriptor"] = descriptor
 
 def binarize(img, thresholdValue = 127):
     grayScaleImg = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
@@ -52,8 +58,8 @@ def fillComponent(component, fillColor):
         
     return component
 
-def detectQuadrilaterals(imgShape, components, overlapping = False):    
-    quadrilaterals = np.zeros(imgShape, dtype="uint8")
+def detectQuadrilaterals(components, overlapping = False):    
+    quadrilaterals = []
     
     for component in components:
         contours, _ = cv.findContours(image=component, mode=cv.RETR_TREE, method=cv.CHAIN_APPROX_NONE)
@@ -63,51 +69,76 @@ def detectQuadrilaterals(imgShape, components, overlapping = False):
         if len(numberOfSides) != 4 and not overlapping:
             continue
 
-        quadrilaterals = cv.bitwise_or(quadrilaterals, component)
+        quadrilaterals.append(component)
             
     return quadrilaterals
 
+def detectCardsFromQuadrilaterals(quadrilaterals, img):
+    cards = []
+    
+    for quadrilateral in quadrilaterals:
+        cards.append(cv.bitwise_and(img, img, mask = quadrilateral))
+
+    return cards
+
+# creates a mask with the several detected components
+def getMask(imgShape, components):
+    mask = np.zeros(imgShape, dtype="uint8")
+
+    for component in components:
+        mask = cv.bitwise_or(mask, component)
+
+    return mask
+
+def segmentImg(quadrilaterals, img):
+    mask = getMask((img.shape[0], img.shape[1]), quadrilaterals)
+    cards = cv.bitwise_and(img, img, mask = mask)
+    return cards
+
 # return: img with only the cards
-def detectCards(img):
+def detectCardsAndSegmentImg(img):
     binarized = binarize(img, 100)
     connectedComponents = detectConnectedComponents(binarized)
-    quadrilaterals = detectQuadrilaterals(binarized.shape, connectedComponents)
-    cards = cv.bitwise_and(img, img, mask = quadrilaterals)
+    quadrilaterals = detectQuadrilaterals(connectedComponents)
+    cards = detectCardsFromQuadrilaterals(quadrilaterals, img)
     
-    return cards
+    segementedImg = segmentImg(quadrilaterals, img)
+    
+    return (cards, segementedImg)
 
 # using FEATURE MATCHING
 # return: {cardName: img}
-def identifyCards(round):
-    pass
-    
-    detectedCard = None
-    numberOfMatches = -1
-    
+def identifyCards(detectedCards):
     sift = cv.SIFT_create()
     
-    _, des1 = sift.detectAndCompute(round, None)
-    for card in cardImages:
-        _, des2 = sift.detectAndCompute(cardImages[card]["img"], None)
+    FLANN_INDEX_KDTREE = 1
+    index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
+    search_params = dict(checks = 50)
+            
+    flann = cv.FlannBasedMatcher(index_params, search_params)
+    
+    for detectedCard in detectedCards:
+        bestCard = None
+        numberOfMatches = -1
         
-        FLANN_INDEX_KDTREE = 1
-        index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
-        search_params = dict(checks = 50)
+        _, detectedCardDescriptor = sift.detectAndCompute(detectedCard, None)
+        for templateCard in templateCards:
+            templateCardDescriptor = templateCards[templateCard]["descriptor"]
+            matches = flann.knnMatch(detectedCardDescriptor, templateCardDescriptor, k=2)
+            
+            # store all the good matches as per Lowe's ratio test.
+            good = []
+            for m,n in matches:
+                if m.distance < 0.7 * n.distance:
+                    good.append(m)
+            
+            # verifies if there was more good matches with this template card
+            # than the other, if so we think that the template card is the detected one
+            if len(good) > numberOfMatches:
+                bestCard = templateCard
+                numberOfMatches = len(good)
         
-        flann = cv.FlannBasedMatcher(index_params, search_params)
-        matches = flann.knnMatch(des1, des2, k=2)
-        
-        # store all the good matches as per Lowe's ratio test.
-        good = []
-        for m,n in matches:
-            if m.distance < 0.7 * n.distance:
-                good.append(m)
-                
-        if len(good) > numberOfMatches:
-            detectedCard = card
-            numberOfMatches = len(good)
-        
-    print(f"Detected: {detectedCard}")
+        print(f"Detected: {bestCard}")
 
 # return: {cardName: playerName}
 # ---------------------------------
@@ -131,6 +162,8 @@ QUIT_KEY = ord("q")
 game = gamePackage.Game()
 camera = remoteWebCamPackage.RemoteWebCam()
 
+cardsPerRound = game.getCardsPerRound()
+
 while True:
     camera.nextFrame()
     if not camera.validFrame():
@@ -141,16 +174,21 @@ while True:
     frame = camera.getFrame()
     
     # Where are the cards
-    cards = detectCards(frame)
-    # # Which card is which
-    cardsNames = identifyCards(cards)
-    # # The person that played each card
-    playersAssociatedWithEachCard = associatePlayersWithCards(cardsNames)
+    cards, segmentedImg = detectCardsAndSegmentImg(frame)
 
-    # game.gameRound(playersAssociatedWithEachCard)
-    # roundWinner = game.getRoundWinner()
+    # Only continues processing if there is the right number of cards on the table
+    if len(cards) == cardsPerRound:
+
+        # Which card is which
+        cardsNames = identifyCards(cards)
+
+        # The person that played each card
+        playersAssociatedWithEachCard = associatePlayersWithCards(cardsNames)
+
+        # game.gameRound(playersAssociatedWithEachCard)
+        # roundWinner = game.getRoundWinner()
     
-    cv.imshow("video", cards)
+    cv.imshow("video", segmentedImg)
     
     key = cv.waitKey(1)
     if key == QUIT_KEY:
