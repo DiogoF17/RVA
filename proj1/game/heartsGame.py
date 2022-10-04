@@ -91,23 +91,22 @@ class HeartsGame:
     
     def isValidRound(self, round):
         for card in round:
-            aux = card.split(" ")
-            suit = aux[-1]
-            if suit.upper == "HEARTS" or card == cards.QUEEN_SPADES:
+            suit = cards.getCardSuit(card)
+            if suit == "HEARTS" or card == cards.QUEEN_SPADES:
                 return False
             
         return True
     
     def detectRoundWinner(self, round):        
         ownerOfTheGreatestCard, greatestCard = self.resolveRoundStart(round)
-        suitOfGreatestCard = greatestCard.split(" ")[-1].upper()
+        suitOfGreatestCard = cards.getCardSuit(ownerOfTheGreatestCard)
         
         currentPlayer = ownerOfTheGreatestCard
         for i in range(1, self.numberOfPlayers - 1):
             currentPlayer = (currentPlayer + 1) % self.numberOfPlayers
             currentPlayerCard = self.detectPlayerCard(currentPlayer)
             
-            suitOfCurrentCard = currentPlayerCard.split(" ")[-1].upper()
+            suitOfCurrentCard = cards.getCardSuit(currentPlayerCard)
             if suitOfGreatestCard == suitOfCurrentCard and cards[currentPlayerCard]["number"] > cards[greatestCard]["number"]:
                 ownerOfTheGreatestCard = currentPlayer
                 greatestCard = currentPlayerCard
@@ -132,7 +131,7 @@ class HeartsGame:
         return (player, card)
     
     def isFirstRound(self):
-        return self.roundWinner() == None
+        return self.roundWinner == None
     
     def detectPlayerCard(self, player, round):
         for card in round:

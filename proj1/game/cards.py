@@ -53,3 +53,6 @@ TEN_SPADES = "Ten of Spades"
 QUEEN_SPADES = "Queen of Spades"
 JACK_SPADES = "Jack of Spades"
 KING_SPADES = "King of Spades"
+
+def getCardSuit(card):
+    return card.split(" ")[-1].upper()
