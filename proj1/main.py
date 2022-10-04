@@ -33,6 +33,7 @@ def detectConnectedComponents(img):
     
     return connectedComponents
 
+# fill the holes of each component
 def fillComponent(component, fillColor):
     for i in range(len(component)):
         # find first index different from 0
@@ -51,14 +52,17 @@ def fillComponent(component, fillColor):
         
     return component
 
-def detectQuadrilaterals(imgShape, components):    
+def detectQuadrilaterals(imgShape, components, overlapping = False):    
     quadrilaterals = np.zeros(imgShape, dtype="uint8")
     
     for component in components:
         contours, _ = cv.findContours(image=component, mode=cv.RETR_TREE, method=cv.CHAIN_APPROX_NONE)
         numberOfSides = cv.approxPolyDP(contours[0], 0.04 * cv.arcLength(contours[0], True), True)
     
-        # if len(numberOfSides) == 4:
+        # if overlapping is not allowed we only keep quadrilaterals
+        if len(numberOfSides) != 4 and not overlapping:
+            continue
+
         quadrilaterals = cv.bitwise_or(quadrilaterals, component)
             
     return quadrilaterals
