@@ -8,10 +8,10 @@ import math
 
 # =============================GLOBAL VARIABLES================================
 
-cardImages = {cards.ACE_SPADES: {"fileName": "./cards_normal/1B.png"},
-              cards.ACE_HEARTS: {"fileName": "./cards_normal/2B.png"},
-              cards.ACE_CLUBS: {"fileName": "./cards_normal/3B.png"},
-              cards.ACE_DIAMONDS: {"fileName": "./cards_normal/4B.png"}}
+cardImages = {cards.ACE_SPADES: {"fileName": "./cards_simple/1Bs.png"},
+              cards.ACE_HEARTS: {"fileName": "./cards_simple/1Bh.png"},
+              cards.ACE_CLUBS: {"fileName": "./cards_simple/1Bc.png"},
+              cards.ACE_DIAMONDS: {"fileName": "./cards_simple/1Bd.png"}}
 QUIT_KEY = ord("q")
 MIN_AREA_OF_CARDS = 5000
 
@@ -50,46 +50,14 @@ def detectQuadrilaterals(img, components):
             # cv.drawContours(img, contours, 0, color, 2, cv.LINE_8)
             # for coord in coordinates:
             #     cv.circle(img, (coord[0][0],coord[0][1]), radius=10, color=color, thickness=-1)
-            quadrilaterals.append(formatCoordinates(coordinates))
+            quadrilaterals.append(coordinates[:,0])
+            copy = coordinates[:,0].copy()
+            copy = np.concatenate(([copy[-1]],copy[:-1]))
+            # lastElem = copy.pop(-1)
+            # copy.insert(0, lastElem)
+            quadrilaterals.append(copy)
     
     return quadrilaterals
-
-# remove unecessary dimension
-# [[[32,34]],[[23,67]]] to [[32,34],[23,67]]          
-def formatCoordinates(coordinates):
-    #      *
-    #  *
-    #         *
-    #     *
-    newCoordinates = []
-
-    # ind = 0
-    for i in range(4):
-        # print(ind)
-        # newCoordinates.append(coordinates[ind][0])
-
-        # nextPoint1 = (i + 1) % 4
-        # nextPoint2 = (i + 2) % 4
-        # nextPoint3 = (i + 3) % 4
-
-        # distPoint1 = math.sqrt(math.pow(coordinates[ind][0][0] - coordinates[nextPoint1][0][0], 2) +  math.pow(coordinates[ind][0][1] - coordinates[nextPoint1][0][1], 2))
-        # distPoint2 = math.sqrt(math.pow(coordinates[ind][0][0] - coordinates[nextPoint2][0][0], 2) +  math.pow(coordinates[ind][0][1] - coordinates[nextPoint2][0][1], 2))
-        # distPoint3 = math.sqrt(math.pow(coordinates[ind][0][0] - coordinates[nextPoint3][0][0], 2) +  math.pow(coordinates[ind][0][1] - coordinates[nextPoint3][0][1], 2))
-        
-        # dists = [[distPoint1, nextPoint1], [distPoint2, nextPoint2], [distPoint3, nextPoint3]]
-        # dists.sort(key = lambda x: x[0])
-        # print(dists)
-        # if i % 2 == 0: # menor distancia
-        #     ind = dists[0][1]
-        # else:
-        #     ind = dists[1][1]
-        newCoordinates.append(coordinates[i][0])
-        
-
-    # print(ind)
-    # newCoordinates.append(coordinates[ind][0])
-    # print(newCoordinates)
-    return newCoordinates
     
 # return: img with only the cards
 def detectCards(img):
@@ -119,14 +87,23 @@ def calculateHomographyAndWarpImage(img, coord_src, coord_dst = np.array([[0,0],
     result = cv.warpPerspective(img, h, size)
     return result
 
-def templateMatching(possibleCards):
+def templateMatching(possibleCards, simple=True):
     for possibleCard in possibleCards:
+        # if simple:
+        #     numberOfPixelsHorizontal = math.floor(possibleCard.shape[1] * 0.25)
+        #     numberOfPixelsVertical = math.floor(possibleCard.shape[0] * 0.3)
+        #     cv.imshow("possibleCard2", possibleCard)
+        #     possibleCard = cv.resize(possibleCard[:numberOfPixelsVertical, :numberOfPixelsHorizontal, :],[33,62])
         for card in cardImages:
             # Apply template Matching
+            # possibleCard = cv.cvtColor(possibleCard, cv.COLOR_BGR2GRAY)
+            # cardImages[card]["img"] = cv.cvtColor(cardImages[card]["img"], cv.COLOR_BGR2GRAY)
+            # aux = cardImages[card]["img"][:numberOfPixelsVertical, :numberOfPixelsHorizontal, :]
             res = cv.matchTemplate(possibleCard,cardImages[card]["img"],cv.TM_CCOEFF_NORMED)
             min_val, max_val, min_loc, max_loc = cv.minMaxLoc(res)
-            if(max_val >= 0.70):
-                cv.imshow("possibleCard", possibleCard)
+            cv.imshow("possibleCard", possibleCard)
+            if(max_val >= 0.6):
+                # cv.imshow("possibleCard", possibleCard)
                 print("Card name: "+card + f" max_val={max_val}")
 
 
