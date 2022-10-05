@@ -4,6 +4,7 @@ import game.game as gamePackage
 import camera.remoteWebCam as remoteWebCamPackage
 import game.cards as cards
 import random as rng
+import math
 
 # =============================GLOBAL VARIABLES================================
 
@@ -56,10 +57,39 @@ def detectQuadrilaterals(img, components):
 # remove unecessary dimension
 # [[[32,34]],[[23,67]]] to [[32,34],[23,67]]          
 def formatCoordinates(coordinates):
-    formatedCoord = []
-    for coord in coordinates:
-        formatedCoord.append(coord[0])
-    return formatedCoord
+    #      *
+    #  *
+    #         *
+    #     *
+    newCoordinates = []
+
+    # ind = 0
+    for i in range(4):
+        # print(ind)
+        # newCoordinates.append(coordinates[ind][0])
+
+        # nextPoint1 = (i + 1) % 4
+        # nextPoint2 = (i + 2) % 4
+        # nextPoint3 = (i + 3) % 4
+
+        # distPoint1 = math.sqrt(math.pow(coordinates[ind][0][0] - coordinates[nextPoint1][0][0], 2) +  math.pow(coordinates[ind][0][1] - coordinates[nextPoint1][0][1], 2))
+        # distPoint2 = math.sqrt(math.pow(coordinates[ind][0][0] - coordinates[nextPoint2][0][0], 2) +  math.pow(coordinates[ind][0][1] - coordinates[nextPoint2][0][1], 2))
+        # distPoint3 = math.sqrt(math.pow(coordinates[ind][0][0] - coordinates[nextPoint3][0][0], 2) +  math.pow(coordinates[ind][0][1] - coordinates[nextPoint3][0][1], 2))
+        
+        # dists = [[distPoint1, nextPoint1], [distPoint2, nextPoint2], [distPoint3, nextPoint3]]
+        # dists.sort(key = lambda x: x[0])
+        # print(dists)
+        # if i % 2 == 0: # menor distancia
+        #     ind = dists[0][1]
+        # else:
+        #     ind = dists[1][1]
+        newCoordinates.append(coordinates[i][0])
+        
+
+    # print(ind)
+    # newCoordinates.append(coordinates[ind][0])
+    # print(newCoordinates)
+    return newCoordinates
     
 # return: img with only the cards
 def detectCards(img):
