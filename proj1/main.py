@@ -7,10 +7,10 @@ import random as rng
 
 # =============================GLOBAL VARIABLES================================
 
-cardImages = {cards.ACE_SPADES: {"fileName": "./cards_normal/1.png"},
-              cards.ACE_HEARTS: {"fileName": "./cards_normal/2.png"},
-              cards.ACE_CLUBS: {"fileName": "./cards_normal/3.png"},
-              cards.ACE_DIAMONDS: {"fileName": "./cards_normal/4.png"}}
+cardImages = {cards.ACE_SPADES: {"fileName": "./cards_normal/1B.png"},
+              cards.ACE_HEARTS: {"fileName": "./cards_normal/2B.png"},
+              cards.ACE_CLUBS: {"fileName": "./cards_normal/3B.png"},
+              cards.ACE_DIAMONDS: {"fileName": "./cards_normal/4B.png"}}
 QUIT_KEY = ord("q")
 MIN_AREA_OF_CARDS = 5000
 
@@ -50,6 +50,7 @@ def detectQuadrilaterals(img, components):
             # for coord in coordinates:
             #     cv.circle(img, (coord[0][0],coord[0][1]), radius=10, color=color, thickness=-1)
             quadrilaterals.append(formatCoordinates(coordinates))
+    
     return quadrilaterals
 
 # remove unecessary dimension
@@ -67,38 +68,69 @@ def detectCards(img):
     quadrilaterals = detectQuadrilaterals(img, connectedComponents)
     return img, quadrilaterals
 
-# using FEATURE MATCHING
+
 # return: {cardName: img}
-def identifyCards(round):
-    pass
+def identifyCards(img, possibleCardsPosition):
+    possibleCards = []
+    for coordinates in possibleCardsPosition:
+        possibleCards.append(calculateHomographyAndWarpImage(img, np.array(coordinates)))
+    templateMatching(possibleCards)
+   
+def calculateHomographyAndWarpImage(img, coord_src, coord_dst = np.array([[0,0],[0,725],[499,725],[499,0]])):
+    # coord_src and coord_dst are numpy arrays of points
+    # in source and destination images. We need at least
+    # corresponding points.
+    h, status = cv.findHomography(coord_src, coord_dst)
     
-    detectedCard = None
-    numberOfMatches = -1
+    # The calculated homography can be used to warp
+    # the source image to destination. Size is the
+    # size (width,height) of result
+    size = [coord_dst[2][0]+1,coord_dst[2][1]+1]
+    result = cv.warpPerspective(img, h, size)
+    return result
+
+def templateMatching(possibleCards):
+    for possibleCard in possibleCards:
+        for card in cardImages:
+            # Apply template Matching
+            res = cv.matchTemplate(possibleCard,cardImages[card]["img"],cv.TM_CCOEFF_NORMED)
+            min_val, max_val, min_loc, max_loc = cv.minMaxLoc(res)
+            if(max_val >= 0.70):
+                cv.imshow("possibleCard", possibleCard)
+                print("Card name: "+card + f" max_val={max_val}")
+
+
+# 192.168.1.74:8080
+
+# def featureMatching(round):
+#     detectedCard = None
+#     numberOfMatches = -1
     
-    sift = cv.SIFT_create()
+#     sift = cv.SIFT_create()
     
-    _, des1 = sift.detectAndCompute(round, None)
-    for card in cardImages:
-        _, des2 = sift.detectAndCompute(cardImages[card]["img"], None)
+#     _, des1 = sift.detectAndCompute(round, None)
+#     for card in cardImages:
+#         _, des2 = sift.detectAndCompute(cardImages[card]["img"], None)
         
-        FLANN_INDEX_KDTREE = 1
-        index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
-        search_params = dict(checks = 50)
+#         FLANN_INDEX_KDTREE = 1
+#         index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
+#         search_params = dict(checks = 50)
         
-        flann = cv.FlannBasedMatcher(index_params, search_params)
-        matches = flann.knnMatch(des1, des2, k=2)
+#         flann = cv.FlannBasedMatcher(index_params, search_params)
+#         matches = flann.knnMatch(des1, des2, k=2)
         
-        # store all the good matches as per Lowe's ratio test.
-        good = []
-        for m,n in matches:
-            if m.distance < 0.7 * n.distance:
-                good.append(m)
+#         # store all the good matches as per Lowe's ratio test.
+#         good = []
+#         for m,n in matches:
+#             if m.distance < 0.7 * n.distance:
+#                 good.append(m)
                 
-        if len(good) > numberOfMatches:
-            detectedCard = card
-            numberOfMatches = len(good)
+#         if len(good) > numberOfMatches:
+#             detectedCard = card
+#             numberOfMatches = len(good)
         
-    print(f"Detected: {detectedCard}")
+#     print(f"Detected: {detectedCard}")
+    
 
 # return: {cardName: playerName}
 # ---------------------------------
@@ -131,8 +163,10 @@ while True:
     
     # Where are the cards
     frame, possibleCardsPosition = detectCards(frame)
-    # # Which card is which
-    # cardsNames = identifyCards(cards)
+    
+    if(len(possibleCardsPosition) != 0 ):
+        # Which card is which
+        cardsNames = identifyCards(frame, possibleCardsPosition)
     # # The person that played each card
     # playersAssociatedWithEachCard = associatePlayersWithCards(cardsNames)
 
