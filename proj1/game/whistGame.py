@@ -30,6 +30,9 @@ class WhistGame:
     def validNumberOfPlayers(self, numberOfPlayers):
         return numberOfPlayers == 2 or numberOfPlayers == 4
         
+    def getCardsPerRound(self):
+        return self.numberOfPlayers
+
     def gameRound(self, round):
         if not self.isNewRound(round):
             return
