@@ -8,10 +8,10 @@ import math
 
 # =============================GLOBAL VARIABLES================================
 
-cardImages = {cards.ACE_SPADES: {"fileName": "./cards_simple/1Bs.png"},
-              cards.ACE_HEARTS: {"fileName": "./cards_simple/1Bh.png"},
-              cards.ACE_CLUBS: {"fileName": "./cards_simple/1Bc.png"},
-              cards.ACE_DIAMONDS: {"fileName": "./cards_simple/1Bd.png"}}
+cardImages = {cards.ACE_SPADES: {"fileName": "./cards_normal/1B.png"},
+              cards.ACE_HEARTS: {"fileName": "./cards_normal/2B.png"},
+              cards.ACE_CLUBS: {"fileName": "./cards_normal/3B.png"},
+              cards.ACE_DIAMONDS: {"fileName": "./cards_normal/4B.png"}}
 QUIT_KEY = ord("q")
 MIN_AREA_OF_CARDS = 5000
 
@@ -53,8 +53,6 @@ def detectQuadrilaterals(img, components):
             quadrilaterals.append(coordinates[:,0])
             copy = coordinates[:,0].copy()
             copy = np.concatenate(([copy[-1]],copy[:-1]))
-            # lastElem = copy.pop(-1)
-            # copy.insert(0, lastElem)
             quadrilaterals.append(copy)
     
     return quadrilaterals
@@ -69,10 +67,10 @@ def detectCards(img):
 
 # return: {cardName: img}
 def identifyCards(img, possibleCardsPosition):
-    possibleCards = []
     for coordinates in possibleCardsPosition:
-        possibleCards.append(calculateHomographyAndWarpImage(img, np.array(coordinates)))
-    templateMatching(possibleCards)
+        templateMatching(calculateHomographyAndWarpImage(img, np.array(coordinates)))
+        # featureMatching(calculateHomographyAndWarpImage(img, np.array(coordinates)))
+    
    
 def calculateHomographyAndWarpImage(img, coord_src, coord_dst = np.array([[0,0],[0,725],[499,725],[499,0]])):
     # coord_src and coord_dst are numpy arrays of points
@@ -87,57 +85,62 @@ def calculateHomographyAndWarpImage(img, coord_src, coord_dst = np.array([[0,0],
     result = cv.warpPerspective(img, h, size)
     return result
 
-def templateMatching(possibleCards, simple=True):
-    for possibleCard in possibleCards:
-        # if simple:
-        #     numberOfPixelsHorizontal = math.floor(possibleCard.shape[1] * 0.25)
-        #     numberOfPixelsVertical = math.floor(possibleCard.shape[0] * 0.3)
-        #     cv.imshow("possibleCard2", possibleCard)
-        #     possibleCard = cv.resize(possibleCard[:numberOfPixelsVertical, :numberOfPixelsHorizontal, :],[33,62])
-        for card in cardImages:
-            # Apply template Matching
-            # possibleCard = cv.cvtColor(possibleCard, cv.COLOR_BGR2GRAY)
-            # cardImages[card]["img"] = cv.cvtColor(cardImages[card]["img"], cv.COLOR_BGR2GRAY)
-            # aux = cardImages[card]["img"][:numberOfPixelsVertical, :numberOfPixelsHorizontal, :]
-            res = cv.matchTemplate(possibleCard,cardImages[card]["img"],cv.TM_CCOEFF_NORMED)
-            min_val, max_val, min_loc, max_loc = cv.minMaxLoc(res)
-            cv.imshow("possibleCard", possibleCard)
-            if(max_val >= 0.6):
-                # cv.imshow("possibleCard", possibleCard)
-                print("Card name: "+card + f" max_val={max_val}")
+def templateMatching(possibleCard, simple=True):
+    cardName= "none"
+    max_value = 0
+    
+    # if simple:
+    #     numberOfPixelsHorizontal = math.floor(possibleCard.shape[1] * 0.25)
+    #     numberOfPixelsVertical = math.floor(possibleCard.shape[0] * 0.3)
+    #     cv.imshow("possibleCard2", possibleCard)
+    #     possibleCard = cv.resize(possibleCard[:numberOfPixelsVertical, :numberOfPixelsHorizontal, :],[33,62])
+    
+    for card in cardImages:
+        # Apply template Matchin
+        res = cv.matchTemplate(possibleCard,cardImages[card]["img"],cv.TM_CCOEFF_NORMED)
+        min_val, max_val, min_loc, max_loc = cv.minMaxLoc(res)
+        if(max_val > max_value):
+            max_value = max_val
+            cardName = card
+            
+    if(max_value > 0.7):
+        cv.imshow("possibleCard", possibleCard)
+        print("Card name: "+cardName + f" Max_value: {max_value}")
 
 
 # 192.168.1.74:8080
 
-# def featureMatching(round):
-#     detectedCard = None
-#     numberOfMatches = -1
+def featureMatching(possibleCard, simple=True):
+    numberOfMatches = 40
+    cardName = "none"
     
-#     sift = cv.SIFT_create()
+    sift = cv.SIFT_create()
     
-#     _, des1 = sift.detectAndCompute(round, None)
-#     for card in cardImages:
-#         _, des2 = sift.detectAndCompute(cardImages[card]["img"], None)
+    _, des1 = sift.detectAndCompute(possibleCard, None)
+    for card in cardImages:
+        _, des2 = sift.detectAndCompute(cardImages[card]["img"], None)
         
-#         FLANN_INDEX_KDTREE = 1
-#         index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
-#         search_params = dict(checks = 50)
+        FLANN_INDEX_KDTREE = 1
+        index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
+        search_params = dict(checks = 50)
         
-#         flann = cv.FlannBasedMatcher(index_params, search_params)
-#         matches = flann.knnMatch(des1, des2, k=2)
+        flann = cv.FlannBasedMatcher(index_params, search_params)
+        matches = flann.knnMatch(des1, des2, k=2)
         
-#         # store all the good matches as per Lowe's ratio test.
-#         good = []
-#         for m,n in matches:
-#             if m.distance < 0.7 * n.distance:
-#                 good.append(m)
+        # store all the good matches as per Lowe's ratio test.
+        good = []
+        for m,n in matches:
+            if m.distance < 0.7 * n.distance:
+                good.append(m)
                 
-#         if len(good) > numberOfMatches:
-#             detectedCard = card
-#             numberOfMatches = len(good)
-        
-#     print(f"Detected: {detectedCard}")
+        if len(good) > numberOfMatches:
+            numberOfMatches = len(good)
+            cardName = card
     
+    if(numberOfMatches > 40):
+        cv.imshow("possibleCard", possibleCard)
+        print("Card name: "+cardName + f" Nº matches: {numberOfMatches}")
+            
 
 # return: {cardName: playerName}
 # ---------------------------------
