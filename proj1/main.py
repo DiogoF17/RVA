@@ -5,6 +5,7 @@ import camera.remoteWebCam as remoteWebCamPackage
 import game.cards as cards
 import math
 import game.templateCard as templateCard
+import time
 
 # =============================GLOBAL VARIABLES================================
 
@@ -63,9 +64,9 @@ def detectQuadrilaterals(components, overlapping = False):
 
         quadrilaterals.append(coordinates[:, 0])
 
-        copy = coordinates[:, 0].copy()
-        copy = np.concatenate(([copy[-1]], copy[:-1]))
-        quadrilaterals.append(copy)
+        # copy = coordinates[:, 0].copy()
+        # copy = np.concatenate(([copy[-1]], copy[:-1]))
+        # quadrilaterals.append(copy)
     
     return quadrilaterals
     
@@ -77,38 +78,6 @@ def detectPossibleCards(img):
     
     return quadrilaterals
 
-# return: {cardName: img}
-def identifyPossibleCards(img, possibleCards, usingHomography = True, simple = True):
-    if usingHomography:
-        for possibleCard in possibleCards:
-            templateMatching(calculateHomographyAndWarpImage(img, np.array(possibleCard)), simple = simple)
-            # featureMatching(calculateHomographyAndWarpImage(img, np.array(possibleCard)))
-    
-def calculateHomographyAndWarpImage(img, coord_src, coord_dst = np.array([[0,0],[0,725],[499,725],[499,0]])):
-    # coord_src and coord_dst are numpy arrays of points
-    # in source and destination images. We need at least
-    # corresponding points.
-    homography, _ = cv.findHomography(coord_src, coord_dst)
-    
-    # The calculated homography can be used to warp
-    # the source image to destination. Size is the
-    # size (width,height) of result
-    size = [coord_dst[2][0] + 1, coord_dst[2][1] + 1]
-    result = cv.warpPerspective(img, homography, size)
-    return result
-
-def templateMatching(homography, simple = True):    
-    # get only the symbol of the card
-    if simple:
-        numberOfPixelsHorizontal = math.floor(homography.shape[1] * 0.25)
-        numberOfPixelsVertical = math.floor(homography.shape[0] * 0.3)
-        homography = cv.resize(homography[:numberOfPixelsVertical, :numberOfPixelsHorizontal, :], [33, 62])
-    
-    matchName, matchValue = findBestTemplateMatch(homography, simple = simple)
-    
-    if(matchName != None):
-        print(f"Card Name: {matchName} | Match Value: {matchValue}")
-    
 def findBestTemplateMatch(possibleCard, simple = True):
     bestMatchValue = -1
     bestMatchName = None
@@ -126,6 +95,18 @@ def findBestTemplateMatch(possibleCard, simple = True):
             bestMatchName = templateCardToBeCompared.name
 
     return bestMatchName, bestMatchValue
+
+def templateMatching(homography, simple = True):    
+    # get only the symbol of the card
+    if simple:
+        numberOfPixelsHorizontal = math.floor(homography.shape[1] * 0.25)
+        numberOfPixelsVertical = math.floor(homography.shape[0] * 0.3)
+        homography = cv.resize(homography[:numberOfPixelsVertical, :numberOfPixelsHorizontal, :], [33, 62])
+    
+    matchName, matchValue = findBestTemplateMatch(homography, simple = simple)
+    
+    if(matchName != None):
+        print(f"Card Name: {matchName} | Match Value: {matchValue}")
 
 def featureMatching(possibleCard):
     bestNumberOfMatches = -1
@@ -159,6 +140,36 @@ def featureMatching(possibleCard):
             
     if(bestMatchName != None):
         print(f"Card Name: {bestMatchName} | Nº Of Matches: {bestNumberOfMatches}")
+
+def calculateHomographyAndWarpImage(img, coord_src, coord_dst = np.array([[0,0],[0,725],[499,725],[499,0]])):
+    # if the first two points corresponds to the greater side of the card
+    # it changes the last point to be the first so that the first side is the smaller one
+    dist1 = math.sqrt(math.pow(coord_src[0][0] - coord_src[1][0], 2) + math.pow(coord_src[0][1] - coord_src[1][1], 2))
+    dist2 = math.sqrt(math.pow(coord_src[2][0] - coord_src[1][0], 2) + math.pow(coord_src[2][1] - coord_src[1][1], 2))
+    if dist2 < dist1:
+        coord_src = np.concatenate(([coord_src[-1]], coord_src[:-1]))
+
+    # coord_src and coord_dst are numpy arrays of points
+    # in source and destination images. We need at least
+    # corresponding points.
+    homography, _ = cv.findHomography(coord_src, coord_dst)
+    
+    # The calculated homography can be used to warp
+    # the source image to destination. Size is the
+    # size (width,height) of result
+    size = [coord_dst[2][0] + 1, coord_dst[2][1] + 1]
+    result = cv.warpPerspective(img, homography, size)
+
+    return result
+
+# return: {cardName: img}
+def identifyPossibleCards(img, possibleCards, usingHomography = True, simple = True):
+    if usingHomography:
+        for possibleCard in possibleCards:
+            homography = calculateHomographyAndWarpImage(img, np.array(possibleCard))
+            
+            templateMatching(homography, simple = simple)
+            # featureMatching(homography)
 
 # 192.168.1.74:8080
 
@@ -214,6 +225,8 @@ while True:
     key = cv.waitKey(1)
     if key == QUIT_KEY:
         break
+
+    time.sleep(0.05)
     
 cv.destroyAllWindows()
     
