@@ -31,8 +31,7 @@ def setUp():
     # load simple template
     for fileName in cards.templateCardsSimple:
         img = cv.imread(fileName)
-        _, des = sift.detectAndCompute(img, None)
-        templateCardsSimple.append(templateCard.TemplateCard(cards.templateCardsSimple[fileName], img, des))
+        templateCardsSimple.append(templateCard.TemplateCard(cards.templateCardsSimple[fileName], img, None))
     print("Set up Completed!")
 
 def binarize(img, thresholdValue = 127):
@@ -82,8 +81,8 @@ def detectPossibleCards(img):
 def identifyPossibleCards(img, possibleCards, usingHomography = True, simple = True):
     if usingHomography:
         for possibleCard in possibleCards:
-            # templateMatching(calculateHomographyAndWarpImage(img, np.array(possibleCard)), simple = simple)
-            featureMatching(calculateHomographyAndWarpImage(img, np.array(possibleCard)), simple = simple)
+            templateMatching(calculateHomographyAndWarpImage(img, np.array(possibleCard)), simple = simple)
+            # featureMatching(calculateHomographyAndWarpImage(img, np.array(possibleCard)))
     
 def calculateHomographyAndWarpImage(img, coord_src, coord_dst = np.array([[0,0],[0,725],[499,725],[499,0]])):
     # coord_src and coord_dst are numpy arrays of points
@@ -107,12 +106,12 @@ def templateMatching(homography, simple = True):
     
     matchName, matchValue = findBestTemplateMatch(homography, simple = simple)
     
-    if(matchName != "none"):
+    if(matchName != None):
         print(f"Card Name: {matchName} | Match Value: {matchValue}")
     
 def findBestTemplateMatch(possibleCard, simple = True):
     bestMatchValue = -1
-    bestMatchName = "none"
+    bestMatchName = None
 
     templateCardsToBeCompared = templateCards
     if simple:
@@ -128,9 +127,9 @@ def findBestTemplateMatch(possibleCard, simple = True):
 
     return bestMatchName, bestMatchValue
 
-def featureMatching(possibleCard, simple = False):
+def featureMatching(possibleCard):
     bestNumberOfMatches = -1
-    bestMatchName = "none"
+    bestMatchName = None
     
     sift = cv.SIFT_create()
     
@@ -138,15 +137,12 @@ def featureMatching(possibleCard, simple = False):
     
     templateCardsToBeCompared = templateCards
     
-    if simple:
-        templateCardsToBeCompared = templateCardsSimple
-
     FLANN_INDEX_KDTREE = 1
     index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
     search_params = dict(checks = 50)
      
-    flann = cv.FlannBasedMatcher(index_params, search_params)
-     
+    flann = cv.FlannBasedMatcher(index_params, search_params)   
+ 
     for templateCardToBeCompared in templateCardsToBeCompared:
         
         matches = flann.knnMatch(des1, templateCardToBeCompared.descriptor, k=2)
@@ -161,8 +157,7 @@ def featureMatching(possibleCard, simple = False):
             bestNumberOfMatches = len(good)
             bestMatchName = templateCardToBeCompared.name
             
-    if(bestMatchName != "none"):
-        cv.imshow("possibleCard", possibleCard)
+    if(bestMatchName != None):
         print(f"Card Name: {bestMatchName} | Nº Of Matches: {bestNumberOfMatches}")
 
 # 192.168.1.74:8080
@@ -206,7 +201,7 @@ while True:
     # if len(detectedCards) == cardsPerRound:
 
     # Which card is which
-    cardsNames = identifyPossibleCards(frame, detectedPossibleCards)
+    cardsNames = identifyPossibleCards(frame, detectedPossibleCards, simple=False)
 
     # The person that played each card
     playersAssociatedWithEachCard = associatePlayersWithCards(cardsNames)
