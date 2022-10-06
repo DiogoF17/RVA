@@ -3,24 +3,37 @@ import numpy as np
 import game.game as gamePackage
 import camera.remoteWebCam as remoteWebCamPackage
 import game.cards as cards
+import math
+import game.templateCard as templateCard
 
-templateCards = {cards.ACE_SPADES: {"fileName": "./cards_normal/1.png"},
-              cards.ACE_HEARTS: {"fileName": "./cards_normal/2.png"},
-              cards.ACE_CLUBS: {"fileName": "./cards_normal/3.png"},
-              cards.ACE_DIAMONDS: {"fileName": "./cards_normal/4.png"}}
+# =============================GLOBAL VARIABLES================================
+
+templateCards = []
+templateCardsSimple = []
+
+QUIT_KEY = ord("q")
 
 MIN_AREA_OF_CARDS = 5000
+MIN_MATCH_FOR_TEMPLATE = 0.7
+MIN_MATCH_FOR_FEATURE = 40
 
-def setUp(featureTracking = True):
+# ===============================FUNCTIONS=====================================
+
+def setUp():
+    print("Setting up...")
     sift = cv.SIFT_create()
-    
-    for card in templateCards:
-        img = cv.imread(templateCards[card]["fileName"])
-        templateCards[card]["img"] = img
-        
-        if featureTracking:
-            _, descriptor = sift.detectAndCompute(img, None)
-            templateCards[card]["descriptor"] = descriptor
+    # load normal template
+    for fileName in cards.templateCards:
+        img = cv.imread(fileName)
+        _, des = sift.detectAndCompute(img, None)
+        templateCards.append(templateCard.TemplateCard(cards.templateCards[fileName], img, des))
+
+    # load simple template
+    for fileName in cards.templateCardsSimple:
+        img = cv.imread(fileName)
+        _, des = sift.detectAndCompute(img, None)
+        templateCardsSimple.append(templateCard.TemplateCard(cards.templateCardsSimple[fileName], img, des))
+    print("Set up Completed!")
 
 def binarize(img, thresholdValue = 127):
     grayScaleImg = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
@@ -34,111 +47,125 @@ def detectConnectedComponents(img):
     for i in range(1, numLabels):            
         if stats[i, cv.CC_STAT_AREA] >= MIN_AREA_OF_CARDS:
             componentMask = (labels == i).astype("uint8") * 255
-            # componentMask = fillComponent(componentMask, 255)
             connectedComponents.append(componentMask)
     
     return connectedComponents
 
-# fill the holes of each component
-def fillComponent(component, fillColor):
-    for i in range(len(component)):
-        # find first index different from 0
-        firstIndex = -1
-        for j in range(len(component[i])):
-            if component[i][j] != 0:
-                firstIndex = j
-                
-        # find last index different from 0
-        lastIndex = -1
-        for j in range(len(component[i]) - 1, -1, -1):
-            if component[i][j] != 0:
-                lastIndex = j
-                
-        component[i][firstIndex : lastIndex + 1] = fillColor
-        
-    return component
-
-def detectQuadrilaterals(components, overlapping = False):    
+def detectQuadrilaterals(components, overlapping = False):
     quadrilaterals = []
     
     for component in components:
         contours, _ = cv.findContours(image=component, mode=cv.RETR_TREE, method=cv.CHAIN_APPROX_NONE)
-        numberOfSides = cv.approxPolyDP(contours[0], 0.04 * cv.arcLength(contours[0], True), True)
-    
+        coordinates = cv.approxPolyDP(contours[0], 0.04 * cv.arcLength(contours[0], True), True)
+
         # if overlapping is not allowed we only keep quadrilaterals
-        if len(numberOfSides) != 4 and not overlapping:
+        if len(coordinates) != 4 and not overlapping:
             continue
 
-        quadrilaterals.append(component)
-            
-    return quadrilaterals
+        quadrilaterals.append(coordinates[:, 0])
 
-def detectCardsFromQuadrilaterals(quadrilaterals, img):
-    cards = []
+        copy = coordinates[:, 0].copy()
+        copy = np.concatenate(([copy[-1]], copy[:-1]))
+        quadrilaterals.append(copy)
     
-    for quadrilateral in quadrilaterals:
-        cards.append(cv.bitwise_and(img, img, mask = quadrilateral))
-
-    return cards
-
-# creates a mask with the several detected components
-def getMask(imgShape, components):
-    mask = np.zeros(imgShape, dtype="uint8")
-
-    for component in components:
-        mask = cv.bitwise_or(mask, component)
-
-    return mask
-
-def segmentImg(quadrilaterals, img):
-    mask = getMask((img.shape[0], img.shape[1]), quadrilaterals)
-    cards = cv.bitwise_and(img, img, mask = mask)
-    return cards
-
-# return: img with only the cards
-def detectCardsAndSegmentImg(img):
-    binarized = binarize(img, 100)
+    return quadrilaterals
+    
+# return: quadrilaterals coordinates
+def detectPossibleCards(img):
+    binarized = binarize(img)
     connectedComponents = detectConnectedComponents(binarized)
     quadrilaterals = detectQuadrilaterals(connectedComponents)
-    cards = detectCardsFromQuadrilaterals(quadrilaterals, img)
     
-    segementedImg = segmentImg(quadrilaterals, img)
-    
-    return (cards, segementedImg)
+    return quadrilaterals
 
-# using FEATURE MATCHING
 # return: {cardName: img}
-def identifyCards(detectedCards):
+def identifyPossibleCards(img, possibleCards, usingHomography = True, simple = True):
+    if usingHomography:
+        for possibleCard in possibleCards:
+            # templateMatching(calculateHomographyAndWarpImage(img, np.array(possibleCard)), simple = simple)
+            featureMatching(calculateHomographyAndWarpImage(img, np.array(possibleCard)), simple = simple)
+    
+def calculateHomographyAndWarpImage(img, coord_src, coord_dst = np.array([[0,0],[0,725],[499,725],[499,0]])):
+    # coord_src and coord_dst are numpy arrays of points
+    # in source and destination images. We need at least
+    # corresponding points.
+    homography, _ = cv.findHomography(coord_src, coord_dst)
+    
+    # The calculated homography can be used to warp
+    # the source image to destination. Size is the
+    # size (width,height) of result
+    size = [coord_dst[2][0] + 1, coord_dst[2][1] + 1]
+    result = cv.warpPerspective(img, homography, size)
+    return result
+
+def templateMatching(homography, simple = True):    
+    # get only the symbol of the card
+    if simple:
+        numberOfPixelsHorizontal = math.floor(homography.shape[1] * 0.25)
+        numberOfPixelsVertical = math.floor(homography.shape[0] * 0.3)
+        homography = cv.resize(homography[:numberOfPixelsVertical, :numberOfPixelsHorizontal, :], [33, 62])
+    
+    matchName, matchValue = findBestTemplateMatch(homography, simple = simple)
+    
+    if(matchName != "none"):
+        print(f"Card Name: {matchName} | Match Value: {matchValue}")
+    
+def findBestTemplateMatch(possibleCard, simple = True):
+    bestMatchValue = -1
+    bestMatchName = "none"
+
+    templateCardsToBeCompared = templateCards
+    if simple:
+        templateCardsToBeCompared = templateCardsSimple
+
+    for templateCardToBeCompared in templateCardsToBeCompared:
+        res = cv.matchTemplate(possibleCard, templateCardToBeCompared.img, cv.TM_CCOEFF_NORMED)
+        _, max_val, _, _ = cv.minMaxLoc(res)
+        
+        if(max_val >= MIN_MATCH_FOR_TEMPLATE and max_val > bestMatchValue):
+            bestMatchValue = max_val
+            bestMatchName = templateCardToBeCompared.name
+
+    return bestMatchName, bestMatchValue
+
+def featureMatching(possibleCard, simple = False):
+    bestNumberOfMatches = -1
+    bestMatchName = "none"
+    
     sift = cv.SIFT_create()
     
+    _, des1 = sift.detectAndCompute(possibleCard, None)
+    
+    templateCardsToBeCompared = templateCards
+    
+    if simple:
+        templateCardsToBeCompared = templateCardsSimple
+
     FLANN_INDEX_KDTREE = 1
     index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
     search_params = dict(checks = 50)
-            
+     
     flann = cv.FlannBasedMatcher(index_params, search_params)
-    
-    for detectedCard in detectedCards:
-        bestCard = None
-        numberOfMatches = -1
+     
+    for templateCardToBeCompared in templateCardsToBeCompared:
         
-        _, detectedCardDescriptor = sift.detectAndCompute(detectedCard, None)
-        for templateCard in templateCards:
-            templateCardDescriptor = templateCards[templateCard]["descriptor"]
-            matches = flann.knnMatch(detectedCardDescriptor, templateCardDescriptor, k=2)
-            
-            # store all the good matches as per Lowe's ratio test.
-            good = []
-            for m,n in matches:
-                if m.distance < 0.7 * n.distance:
-                    good.append(m)
-            
-            # verifies if there was more good matches with this template card
-            # than the other, if so we think that the template card is the detected one
-            if len(good) > numberOfMatches:
-                bestCard = templateCard
-                numberOfMatches = len(good)
+        matches = flann.knnMatch(des1, templateCardToBeCompared.descriptor, k=2)
         
-        print(f"Detected: {bestCard}")
+        # store all the good matches as per Lowe's ratio test.
+        good = []
+        for m,n in matches:
+            if m.distance < 0.7 * n.distance:
+                good.append(m)
+                
+        if (len(good) >= MIN_MATCH_FOR_FEATURE and len(good) > bestNumberOfMatches):
+            bestNumberOfMatches = len(good)
+            bestMatchName = templateCardToBeCompared.name
+            
+    if(bestMatchName != "none"):
+        cv.imshow("possibleCard", possibleCard)
+        print(f"Card Name: {bestMatchName} | Nº Of Matches: {bestNumberOfMatches}")
+
+# 192.168.1.74:8080
 
 # return: {cardName: playerName}
 # ---------------------------------
@@ -150,19 +177,18 @@ def identifyCards(detectedCards):
 # With 2 players
 #  Player 1              Player 2
 # ---------------------------------
+
 def associatePlayersWithCards(cards):
     pass
 
-# ==================================================================
+# ===================================MAIN======================================
 
 setUp()
-
-QUIT_KEY = ord("q")
 
 game = gamePackage.Game()
 camera = remoteWebCamPackage.RemoteWebCam()
 
-cardsPerRound = game.getCardsPerRound()
+# cardsPerRound = game.getCardsPerRound()
 
 while True:
     camera.nextFrame()
@@ -174,21 +200,21 @@ while True:
     frame = camera.getFrame()
     
     # Where are the cards
-    cards, segmentedImg = detectCardsAndSegmentImg(frame)
+    detectedPossibleCards = detectPossibleCards(frame)
 
     # Only continues processing if there is the right number of cards on the table
-    if len(cards) == cardsPerRound:
+    # if len(detectedCards) == cardsPerRound:
 
-        # Which card is which
-        cardsNames = identifyCards(cards)
+    # Which card is which
+    cardsNames = identifyPossibleCards(frame, detectedPossibleCards)
 
-        # The person that played each card
-        playersAssociatedWithEachCard = associatePlayersWithCards(cardsNames)
+    # The person that played each card
+    playersAssociatedWithEachCard = associatePlayersWithCards(cardsNames)
 
-        # game.gameRound(playersAssociatedWithEachCard)
-        # roundWinner = game.getRoundWinner()
+    # game.gameRound(playersAssociatedWithEachCard)
+    # roundWinner = game.getRoundWinner()
     
-    cv.imshow("video", segmentedImg)
+    cv.imshow("video", frame)
     
     key = cv.waitKey(1)
     if key == QUIT_KEY:
