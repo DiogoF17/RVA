@@ -6,6 +6,9 @@ import game.cards as cards
 import math
 import game.templateCard as templateCard
 import time
+from connectedComponent import ConnectedComponent
+from quadrilateral import Quadrilateral
+from card import Card
 
 # =============================GLOBAL VARIABLES================================
 
@@ -41,13 +44,14 @@ def binarize(img, thresholdValue = 127):
     return binarized
 
 def detectConnectedComponents(img):
-    numLabels, labels, stats, _ = cv.connectedComponentsWithStats(img)
+    numLabels, labels, stats, centroids = cv.connectedComponentsWithStats(img)
     
     connectedComponents = []
     for i in range(1, numLabels):            
         if stats[i, cv.CC_STAT_AREA] >= MIN_AREA_OF_CARDS:
             componentMask = (labels == i).astype("uint8") * 255
-            connectedComponents.append(componentMask)
+            connectedComponent = ConnectedComponent(componentMask, centroids[i])
+            connectedComponents.append(connectedComponent)
     
     return connectedComponents
 
@@ -55,14 +59,15 @@ def detectQuadrilaterals(components, overlapping = False):
     quadrilaterals = []
     
     for component in components:
-        contours, _ = cv.findContours(image=component, mode=cv.RETR_TREE, method=cv.CHAIN_APPROX_NONE)
+        contours, _ = cv.findContours(image=component.mask, mode=cv.RETR_TREE, method=cv.CHAIN_APPROX_NONE)
         coordinates = cv.approxPolyDP(contours[0], 0.04 * cv.arcLength(contours[0], True), True)
 
         # if overlapping is not allowed we only keep quadrilaterals
         if len(coordinates) != 4 and not overlapping:
             continue
 
-        quadrilaterals.append(coordinates[:, 0])
+        quadrilateral = Quadrilateral(component.centroid, contours, coordinates[:, 0])
+        quadrilaterals.append(quadrilateral)
 
         # copy = coordinates[:, 0].copy()
         # copy = np.concatenate(([copy[-1]], copy[:-1]))
@@ -70,7 +75,6 @@ def detectQuadrilaterals(components, overlapping = False):
     
     return quadrilaterals
     
-# return: quadrilaterals coordinates
 def detectPossibleCards(img):
     binarized = binarize(img)
     connectedComponents = detectConnectedComponents(binarized)
@@ -96,17 +100,20 @@ def findBestTemplateMatch(possibleCard, simple = True):
 
     return bestMatchName, bestMatchValue
 
-def templateMatching(homography, simple = True):    
+def templateMatching(possibleCard, simple = True):    
     # get only the symbol of the card
     if simple:
-        numberOfPixelsHorizontal = math.floor(homography.shape[1] * 0.25)
-        numberOfPixelsVertical = math.floor(homography.shape[0] * 0.3)
-        homography = cv.resize(homography[:numberOfPixelsVertical, :numberOfPixelsHorizontal, :], [33, 62])
+        numberOfPixelsHorizontal = math.floor(possibleCard.homography.shape[1] * 0.25)
+        numberOfPixelsVertical = math.floor(possibleCard.homography.shape[0] * 0.3)
+        possibleCard.homography = cv.resize(possibleCard.homography[:numberOfPixelsVertical, :numberOfPixelsHorizontal, :], [33, 62])
     
-    matchName, matchValue = findBestTemplateMatch(homography, simple = simple)
+    matchName, matchValue = findBestTemplateMatch(possibleCard.homography, simple = simple)
     
     if(matchName != None):
         print(f"Card Name: {matchName} | Match Value: {matchValue}")
+        return Card(possibleCard, matchName)
+
+    return None
 
 def featureMatching(possibleCard):
     bestNumberOfMatches = -1
@@ -162,14 +169,20 @@ def calculateHomographyAndWarpImage(img, coord_src, coord_dst = np.array([[0,0],
 
     return result
 
-# return: {cardName: img}
 def identifyPossibleCards(img, possibleCards, usingHomography = True, simple = True):
+    identifiedCards = []
+
     if usingHomography:
         for possibleCard in possibleCards:
-            homography = calculateHomographyAndWarpImage(img, np.array(possibleCard))
+            possibleCard.homography = calculateHomographyAndWarpImage(img, np.array(possibleCard))
             
-            templateMatching(homography, simple = simple)
+            identifiedCard = templateMatching(possibleCard, simple = simple)
+            if identifiedCard != None:
+                identifiedCards.append(identifiedCard)
+
             # featureMatching(homography)
+
+    return identifiedCards
 
 # 192.168.1.74:8080
 
@@ -184,8 +197,10 @@ def identifyPossibleCards(img, possibleCards, usingHomography = True, simple = T
 #  Player 1              Player 2
 # ---------------------------------
 
-def associatePlayersWithCards(cards):
-    pass
+def associatePlayersWithCards(img, detectedCards):
+    for detectedCard in detectedCards:
+        print(detectedCard.quadrilateral.centroid)
+        cv.circle(img, detectedCard.quadrilateral.centroid, radius=10, color=(0, 0, 255), thickness=-1)
 
 # ===================================MAIN======================================
 
@@ -212,10 +227,10 @@ while True:
     # if len(detectedCards) == cardsPerRound:
 
     # Which card is which
-    cardsNames = identifyPossibleCards(frame, detectedPossibleCards, simple=False)
+    detectedCards = identifyPossibleCards(frame, detectedPossibleCards, simple=False)
 
     # The person that played each card
-    playersAssociatedWithEachCard = associatePlayersWithCards(cardsNames)
+    playersAssociatedWithEachCard = associatePlayersWithCards(frame, detectedCards)
 
     # game.gameRound(playersAssociatedWithEachCard)
     # roundWinner = game.getRoundWinner()
