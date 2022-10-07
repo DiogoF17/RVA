@@ -72,10 +72,12 @@ class HeartsGame:
         return self.numberOfPlayers
         
     def gameRound(self, round):
-        if not self.isNewRound(round):
+        cardsNames = [card.name for card in round]
+        
+        if not self.isNewRound(cardsNames):
             return
         
-        if self.isFirstRound() and not self.isValidRound(round):
+        if self.isFirstRound() and not self.isValidRound(cardsNames):
             exit("ERROR! Can't play any Hearts of the Queen of Spades in the first round")
         
         self.detectRoundWinner(round)
@@ -118,13 +120,13 @@ class HeartsGame:
         self.roundWinner = ownerOfTheGreatestCard
         print(f"Round Winner: Player {self.roundWinner} | {greatestCard}")
     
-    def resolveRoundStart(self, round):
+    def resolveRoundStart(self, round, cardsNames):
         # it's not the first round of the game
         if not self.isFirstRound():
             player = self.roundWinner
             card = self.detectPlayerCard(player, round)
         # it's the first round but i doesn't start with a 2 of clubs
-        elif cards.TWO_CLUBS not in round.keys():
+        elif cards.TWO_CLUBS not in cardsNames:
             exit("ERROR! The Hearts game must start with the 2 of clubs, but it was not detected")
         # it's the first round of the game
         else:
@@ -138,7 +140,7 @@ class HeartsGame:
     
     def detectPlayerCard(self, player, round):
         for card in round:
-            if round[card] == player:
+            if card.player == player:
                 return card
             
         exit(f"ERROR! Couldn't determine player {player} card")

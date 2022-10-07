@@ -100,7 +100,7 @@ def findBestTemplateMatch(possibleCard, simple = True):
 
     return bestMatchName, bestMatchValue
 
-def templateMatching(possibleCard, simple = True):    
+def templateMatching(index, possibleCard, simple = True):    
     # get only the symbol of the card
     if simple:
         numberOfPixelsHorizontal = math.floor(possibleCard.homography.shape[1] * 0.25)
@@ -110,6 +110,7 @@ def templateMatching(possibleCard, simple = True):
     matchName, matchValue = findBestTemplateMatch(possibleCard.homography, simple = simple)
     
     if(matchName != None):
+        cv.imshow(f"output{index}", possibleCard.homography)
         print(f"Card Name: {matchName} | Match Value: {matchValue}")
         return Card(possibleCard, matchName)
 
@@ -153,7 +154,7 @@ def calculateHomographyAndWarpImage(img, coord_src, coord_dst = np.array([[0,0],
     # it changes the last point to be the first so that the first side is the smaller one
     dist1 = math.sqrt(math.pow(coord_src[0][0] - coord_src[1][0], 2) + math.pow(coord_src[0][1] - coord_src[1][1], 2))
     dist2 = math.sqrt(math.pow(coord_src[2][0] - coord_src[1][0], 2) + math.pow(coord_src[2][1] - coord_src[1][1], 2))
-    if dist2 < dist1:
+    if dist2 > dist1:
         coord_src = np.concatenate(([coord_src[-1]], coord_src[:-1]))
 
     # coord_src and coord_dst are numpy arrays of points
@@ -171,17 +172,18 @@ def calculateHomographyAndWarpImage(img, coord_src, coord_dst = np.array([[0,0],
 
 def identifyPossibleCards(img, possibleCards, usingHomography = True, simple = True):
     identifiedCards = []
-
+    index = 0
     if usingHomography:
         for possibleCard in possibleCards:
-            possibleCard.homography = calculateHomographyAndWarpImage(img, np.array(possibleCard))
+            possibleCard.homography = calculateHomographyAndWarpImage(img, np.array(possibleCard.verticesCoords))
             
-            identifiedCard = templateMatching(possibleCard, simple = simple)
+            identifiedCard = templateMatching(index, possibleCard, simple = simple)
             if identifiedCard != None:
                 identifiedCards.append(identifiedCard)
 
             # featureMatching(homography)
-
+            index+=1
+            
     return identifiedCards
 
 # 192.168.1.74:8080
@@ -197,10 +199,28 @@ def identifyPossibleCards(img, possibleCards, usingHomography = True, simple = T
 #  Player 1              Player 2
 # ---------------------------------
 
-def associatePlayersWithCards(img, detectedCards):
+def associatePlayersWithCards(detectedCards):
+    xCentroid = []
+    yCentroid = []
+    
     for detectedCard in detectedCards:
-        print(detectedCard.quadrilateral.centroid)
-        cv.circle(img, detectedCard.quadrilateral.centroid, radius=10, color=(0, 0, 255), thickness=-1)
+        xCentroid.append([detectedCard.quadrilateral.centroid[0],detectedCard])
+        yCentroid.append([detectedCard.quadrilateral.centroid[1],detectedCard])
+        
+    xCentroid.sort(key=(lambda x : x[0]))
+    yCentroid.sort(key=(lambda x : x[0]))
+        
+    if len(detectedCards) == 2:
+        xCentroid[0][1].player = 1
+        xCentroid[3][1].player = 2
+    else:
+        xCentroid[0][1].player = 1
+        xCentroid[3][1].player = 3
+        
+        yCentroid[0][1].player = 2
+        yCentroid[3][1].player = 4
+      
+    return detectedCards
 
 # ===================================MAIN======================================
 
@@ -209,7 +229,7 @@ setUp()
 game = gamePackage.Game()
 camera = remoteWebCamPackage.RemoteWebCam()
 
-# cardsPerRound = game.getCardsPerRound()
+cardsPerRound = game.getCardsPerRound()
 
 while True:
     camera.nextFrame()
@@ -229,11 +249,13 @@ while True:
     # Which card is which
     detectedCards = identifyPossibleCards(frame, detectedPossibleCards, simple=False)
 
-    # The person that played each card
-    playersAssociatedWithEachCard = associatePlayersWithCards(frame, detectedCards)
+    # Only continues processing if there is the right number of cards on the table
+    if len(detectedCards) == cardsPerRound:
+        # The person that played each card
+        playersAssociatedWithEachCard = associatePlayersWithCards(frame, detectedCards)
 
-    # game.gameRound(playersAssociatedWithEachCard)
-    # roundWinner = game.getRoundWinner()
+        game.gameRound(playersAssociatedWithEachCard)
+        # roundWinner = game.getRoundWinner()
     
     cv.imshow("video", frame)
     
@@ -241,7 +263,7 @@ while True:
     if key == QUIT_KEY:
         break
 
-    time.sleep(0.05)
+    # time.sleep(0.05)
     
 cv.destroyAllWindows()
     
