@@ -67,6 +67,7 @@ class HeartsGame:
         
         self.lastRound = []
         self.roundWinner = None
+        self.score = {1: 0, 2: 0, 3: 0, 4: 0}
 
     def getCardsPerRound(self):
         return self.numberOfPlayers
@@ -78,11 +79,11 @@ class HeartsGame:
             return
         
         if self.isFirstRound() and not self.isValidRound(cardsNames):
-            exit("ERROR! Can't play any Hearts of the Queen of Spades in the first round")
+            exit("ERROR! Can't play any Hearts or the Queen of Spades in the first round")
         
-        self.detectRoundWinner(round)
-        self.updatePlayersScore(round)
-        self.addPlayedRound(round)
+        self.detectRoundWinner(round, cardsNames)
+        self.updatePlayersScore(cardsNames)
+        self.addPlayedRound(cardsNames)
         
     def isNewRound(self, round):
         if len(round) != self.numberOfPlayers:
@@ -94,16 +95,16 @@ class HeartsGame:
         
         return True     
     
-    def isValidRound(self, round):
-        for card in round:
+    def isValidRound(self, cardsNames):
+        for card in cardsNames:
             suit = cards.getCardSuit(card)
             if suit == "HEARTS" or card == cards.QUEEN_SPADES:
                 return False
             
         return True
     
-    def detectRoundWinner(self, round):        
-        ownerOfTheGreatestCard, greatestCard = self.resolveRoundStart(round)
+    def detectRoundWinner(self, round, cardsNames):        
+        ownerOfTheGreatestCard, greatestCard = self.resolveRoundStart(round, cardsNames)
         suitOfGreatestCard = cards.getCardSuit(ownerOfTheGreatestCard)
         
         currentPlayer = ownerOfTheGreatestCard
@@ -131,7 +132,7 @@ class HeartsGame:
         # it's the first round of the game
         else:
             card = cards.TWO_CLUBS
-            player = round[cards.TWO_CLUBS]
+            player = self.detectPlayerOfCard(cards.TWO_CLUBS, round)
             
         return (player, card)
     
@@ -144,25 +145,48 @@ class HeartsGame:
                 return card
             
         exit(f"ERROR! Couldn't determine player {player} card")
+
+    def detectPlayerOfCard(self, cardName, round):
+        for card in round:
+            if card.name == cardName:
+                return card.player
+            
+        exit(f"ERROR! Couldn't determine player of {cardName}")
     
-    def updatePlayersScore(self, round):
-        scoreOnTheTable = self.computeScoreOnRound(round)
+    def updatePlayersScore(self, cardsNames):
+        scoreOnTheTable = self.computeScoreOnRound(cardsNames)
+        self.score[self.roundWinner] += scoreOnTheTable
+
         print(f"Score On The Table: {scoreOnTheTable}")
-        
     
-    def computeScoreOnRound(self, round):
+    def computeScoreOnRound(self, cardsNames):
         score = 0
         
-        for card in round:
-            score += cardsRules[card]["value"]
+        for cardName in cardsNames:
+            score += cardsRules[cardName]["value"]
             
         return score
     
-    def addPlayedRound(self, round):
-        self.lastRound = round
+    def addPlayedRound(self, cardsNames):
+        self.lastRound = cardsNames
         
     def getRoundWinner(self):
         return self.roundWinner
 
     def gameEnded(self):
+        for player in self.score:
+            if self.score[player] >= 100:
+                return True
+
         return False
+
+    def getGameWinner(self):
+        lowestScore = 1000 # very high number
+        playerWithLowestScore = None
+
+        for player in self.score:
+            if self.score[player] < lowestScore:
+                lowestScore = self.score[player]
+                playerWithLowestScore = player
+
+        return playerWithLowestScore

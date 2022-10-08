@@ -45,4 +45,4 @@ class Game:
         return self.game.gameEnded()
     
     def getGameWinner(self):
-        return "1"
+        return self.game.getGameWinner()

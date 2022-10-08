@@ -255,7 +255,9 @@ while True:
         playersAssociatedWithEachCard = associatePlayersWithCards(frame, detectedCards)
 
         game.gameRound(playersAssociatedWithEachCard)
-        # roundWinner = game.getRoundWinner()
+        roundWinner = game.getRoundWinner()
+
+        print("###############################")
     
     cv.imshow("video", frame)
     
