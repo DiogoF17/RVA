@@ -9,6 +9,7 @@ import time
 from connectedComponent import ConnectedComponent
 from quadrilateral import Quadrilateral
 from card import Card
+import util
 
 # =============================GLOBAL VARIABLES================================
 
@@ -66,7 +67,7 @@ def detectQuadrilaterals(components, overlapping = False):
         if len(coordinates) != 4 and not overlapping:
             continue
 
-        quadrilateral = Quadrilateral(component.centroid, contours, coordinates[:, 0])
+        quadrilateral = Quadrilateral(component.centroid, contours[0], coordinates[:, 0])
         quadrilaterals.append(quadrilateral)
 
         # copy = coordinates[:, 0].copy()
@@ -100,7 +101,7 @@ def findBestTemplateMatch(possibleCard, simple = True):
 
     return bestMatchName, bestMatchValue
 
-def templateMatching(index, possibleCard, simple = True):    
+def templateMatching(possibleCard, simple = True):    
     # get only the symbol of the card
     if simple:
         numberOfPixelsHorizontal = math.floor(possibleCard.homography.shape[1] * 0.25)
@@ -110,7 +111,6 @@ def templateMatching(index, possibleCard, simple = True):
     matchName, matchValue = findBestTemplateMatch(possibleCard.homography, simple = simple)
     
     if(matchName != None):
-        cv.imshow(f"output{index}", possibleCard.homography)
         print(f"Card Name: {matchName} | Match Value: {matchValue}")
         return Card(possibleCard, matchName)
 
@@ -149,13 +149,14 @@ def featureMatching(possibleCard):
     if(bestMatchName != None):
         print(f"Card Name: {bestMatchName} | Nº Of Matches: {bestNumberOfMatches}")
 
-def calculateHomographyAndWarpImage(img, coord_src, coord_dst = np.array([[0,0],[0,725],[499,725],[499,0]])):
-    # if the first two points corresponds to the greater side of the card
-    # it changes the last point to be the first so that the first side is the smaller one
-    dist1 = math.sqrt(math.pow(coord_src[0][0] - coord_src[1][0], 2) + math.pow(coord_src[0][1] - coord_src[1][1], 2))
-    dist2 = math.sqrt(math.pow(coord_src[2][0] - coord_src[1][0], 2) + math.pow(coord_src[2][1] - coord_src[1][1], 2))
-    if dist2 > dist1:
-        coord_src = np.concatenate(([coord_src[-1]], coord_src[:-1]))
+def calculateHomographyAndWarpImage(img, quadrilateral, coord_dst = np.array([[0, 0], [499, 0], [0, 725], [499, 725]])):
+    coord_src = np.array(util.orderCoordinates(quadrilateral))
+
+    cv.circle(img, coord_src[0], radius = 10, color=(0, 0, 255), thickness = -1)
+    cv.circle(img, coord_src[1], radius = 10, color=(0, 255, 255), thickness = -1)
+    cv.circle(img, coord_src[2], radius = 10, color=(0, 255, 0), thickness = -1)
+    cv.circle(img, coord_src[3], radius = 10, color=(255, 0, 0), thickness = -1)
+    cv.imshow("coords", img)
 
     # coord_src and coord_dst are numpy arrays of points
     # in source and destination images. We need at least
@@ -165,8 +166,9 @@ def calculateHomographyAndWarpImage(img, coord_src, coord_dst = np.array([[0,0],
     # The calculated homography can be used to warp
     # the source image to destination. Size is the
     # size (width,height) of result
-    size = [coord_dst[2][0] + 1, coord_dst[2][1] + 1]
-    result = cv.warpPerspective(img, homography, size)
+    width = (coord_dst[1][0] - coord_dst[0][0]) + 1
+    height = (coord_dst[2][1] - coord_dst[0][0]) + 1
+    result = cv.warpPerspective(img, homography, [width, height])
 
     return result
 
@@ -177,12 +179,14 @@ def identifyPossibleCards(img, possibleCards, usingHomography = True, simple = T
         for possibleCard in possibleCards:
             possibleCard.homography = calculateHomographyAndWarpImage(img, np.array(possibleCard.verticesCoords))
             
-            identifiedCard = templateMatching(index, possibleCard, simple = simple)
+            cv.imshow(f"Output {index}", possibleCard.homography)
+            
+            identifiedCard = templateMatching(possibleCard, simple = simple)
             if identifiedCard != None:
                 identifiedCards.append(identifiedCard)
 
             # featureMatching(homography)
-            index+=1
+            index += 1
             
     return identifiedCards
 
