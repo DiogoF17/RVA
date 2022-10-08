@@ -24,9 +24,9 @@ def orderCoordinates(quadrilateral):
         return [bottomLeft, topLeft, bottomRight, topRight]
     # Diamond Oriented
     else:
-        if bottomLeft[1] > topRight[1]:
+        if bottomLeft[1] < topRight[1]:
             return [topLeft, bottomLeft, topRight, bottomRight]
-        elif bottomLeft[1] > topRight[1]:
+        else:
             return [topRight, topLeft, bottomRight, bottomLeft]
 
         #      3,0
