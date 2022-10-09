@@ -6,11 +6,11 @@ def orderCoordinates(quadrilateral):
     # |      |
     # |      |
     # BL --- BR
-    coords = []
+    coords = quadrilateral.verticesCoords
     
     sumCoords = [[coords[i][0] + coords[i][1], coords[i][1] - coords[i][0], coords[i]] for i in range(len(coords))]
     sumCoords.sort(key = lambda x: (x[0], x[1]))
-
+    
     topLeft = sumCoords[0]
     topRight = sumCoords[1]
     bottomLeft = sumCoords[2]
@@ -18,16 +18,16 @@ def orderCoordinates(quadrilateral):
 
     # Horizontal Oriented
     if quadrilateral.width >= 1.2 * quadrilateral.height:
-        return [topLeft, topRight, bottomLeft, bottomRight]
+        return [topLeft[2], topRight[2], bottomLeft[2], bottomRight[2]]
     # Vertical Oriented
     elif quadrilateral.width <= 0.8 * quadrilateral.height:
-        return [bottomLeft, topLeft, bottomRight, topRight]
+        return [bottomLeft[2], topLeft[2], bottomRight[2], topRight[2]]
     # Diamond Oriented
     else:
         if bottomLeft[1] < topRight[1]:
-            return [topLeft, bottomLeft, topRight, bottomRight]
+            return [topLeft[2], bottomLeft[2], topRight[2], bottomRight[2]]
         else:
-            return [topRight, topLeft, bottomRight, bottomLeft]
+            return [topRight[2], topLeft[2], bottomRight[2], bottomLeft[2]]
 
         #      3,0
         # 0,3       6,3

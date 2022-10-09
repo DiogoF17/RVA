@@ -177,7 +177,7 @@ def identifyPossibleCards(img, possibleCards, usingHomography = True, simple = T
     index = 0
     if usingHomography:
         for possibleCard in possibleCards:
-            possibleCard.homography = calculateHomographyAndWarpImage(img, np.array(possibleCard.verticesCoords))
+            possibleCard.homography = calculateHomographyAndWarpImage(img, possibleCard)
             
             cv.imshow(f"Output {index}", possibleCard.homography)
             
