@@ -69,10 +69,6 @@ def detectQuadrilaterals(components, overlapping = False):
 
         quadrilateral = Quadrilateral(component.centroid, contours[0], coordinates[:, 0])
         quadrilaterals.append(quadrilateral)
-
-        # copy = coordinates[:, 0].copy()
-        # copy = np.concatenate(([copy[-1]], copy[:-1]))
-        # quadrilaterals.append(copy)
     
     return quadrilaterals
     
