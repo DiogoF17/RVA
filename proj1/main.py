@@ -182,18 +182,17 @@ def identifyPossibleCards(img, possibleCards, usingHomography = True, simple = T
 
 # 192.168.1.74:8080
 
-# return: {cardName: playerName}
-# ---------------------------------
-# With 4 players
-#             Player 2 
-#  Player 1               Player 3
-#             Player 4
-# ---------------------------------
-# With 2 players
-#  Player 1              Player 2
-# ---------------------------------
-
 def associatePlayersWithCards(detectedCards):
+    # ---------------------------------
+    # With 4 players
+    #             Player 2 
+    #  Player 1               Player 3
+    #             Player 4
+    # ---------------------------------
+    # With 2 players
+    #  Player 1              Player 2
+    # ---------------------------------
+
     xCentroid = []
     yCentroid = []
     
