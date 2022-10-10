@@ -87,24 +87,32 @@ def findBestTemplateMatch(possibleCard, simple = True):
     if simple:
         templateCardsToBeCompared = templateCardsSimple
 
+    # possibleCard = binarize(possibleCard)
+    cv.imshow(f"Image To Check", possibleCard)
+
     for templateCardToBeCompared in templateCardsToBeCompared:
         res = cv.matchTemplate(possibleCard, templateCardToBeCompared.img, cv.TM_CCOEFF_NORMED)
         _, max_val, _, _ = cv.minMaxLoc(res)
-        
         if(max_val >= MIN_MATCH_FOR_TEMPLATE and max_val > bestMatchValue):
             bestMatchValue = max_val
             bestMatchName = templateCardToBeCompared.name
+
+        # diffImg = cv.absdiff(binarize(templateCardToBeCompared.img), possibleCard)
+        # val = int(np.sum(diffImg)/255)
+
+        # if(val > bestMatchValue):
+        #     bestMatchValue = val
+        #     bestMatchName = templateCardToBeCompared.name
 
     return bestMatchName, bestMatchValue
 
 def templateMatching(possibleCard, simple = True):    
     # get only the symbol of the card
+    imgToCheck = possibleCard.homography
     if simple:
-        numberOfPixelsHorizontal = math.floor(possibleCard.homography.shape[1] * 0.25)
-        numberOfPixelsVertical = math.floor(possibleCard.homography.shape[0] * 0.3)
-        possibleCard.homography = cv.resize(possibleCard.homography[:numberOfPixelsVertical, :numberOfPixelsHorizontal, :], [33, 62])
+        imgToCheck = util.getSuitImgFromCardImg(imgToCheck)
     
-    matchName, matchValue = findBestTemplateMatch(possibleCard.homography, simple = simple)
+    matchName, matchValue = findBestTemplateMatch(imgToCheck, simple = simple)
     
     if(matchName != None):
         print(f"Card Name: {matchName} | Match Value: {matchValue}")
@@ -169,7 +177,7 @@ def identifyPossibleCards(img, possibleCards, usingHomography = True, simple = T
         for possibleCard in possibleCards:
             possibleCard.homography = calculateHomographyAndWarpImage(img, possibleCard)
             
-            cv.imshow(f"Output {index}", possibleCard.homography)
+            # cv.imshow(f"Output {index}", possibleCard.homography)
             
             identifiedCard = templateMatching(possibleCard, simple = simple)
             if identifiedCard != None:
@@ -240,7 +248,7 @@ while True:
     # if len(detectedCards) == cardsPerRound:
 
     # Which card is which
-    detectedCards = identifyPossibleCards(frame, detectedPossibleCards, simple=False)
+    detectedCards = identifyPossibleCards(frame, detectedPossibleCards, simple=True)
 
     # Only continues processing if there is the right number of cards on the table
     if len(detectedCards) == cardsPerRound:

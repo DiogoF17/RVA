@@ -1,3 +1,6 @@
+import math
+import cv2 as cv
+
 def orderCoordinates(quadrilateral):
     # Top Left (TL), Top Right(TR), Bottom Left(BL), Bottom Right(BR)
     # TL --- TR
@@ -63,3 +66,11 @@ def orderCoordinates(quadrilateral):
             else:
                 print("NORMALLY TILTED TO LEFT")
                 return [coords[1], coords[0], coords[3], coords[2]]
+
+def getSuitImgFromCardImg(img):
+    height, width, _ = img.shape
+    
+    numberOfPixelsHorizontal = math.floor(width * 0.2)
+    numberOfPixelsVertical = math.floor(height * 0.3)
+
+    return cv.resize(img[:numberOfPixelsVertical, :numberOfPixelsHorizontal, :], [33, 62])
