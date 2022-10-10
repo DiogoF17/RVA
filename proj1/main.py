@@ -152,12 +152,6 @@ def featureMatching(possibleCard):
 def calculateHomographyAndWarpImage(img, quadrilateral, coord_dst = np.array([[0, 0], [499, 0], [0, 725], [499, 725]])):
     coord_src = np.array(util.orderCoordinates(quadrilateral))
 
-    cv.circle(img, coord_src[0], radius = 10, color=(0, 0, 255), thickness = -1)
-    cv.circle(img, coord_src[1], radius = 10, color=(0, 255, 255), thickness = -1)
-    cv.circle(img, coord_src[2], radius = 10, color=(0, 255, 0), thickness = -1)
-    cv.circle(img, coord_src[3], radius = 10, color=(255, 0, 0), thickness = -1)
-    cv.imshow("coords", img)
-
     # coord_src and coord_dst are numpy arrays of points
     # in source and destination images. We need at least
     # corresponding points.
