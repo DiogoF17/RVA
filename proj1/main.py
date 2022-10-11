@@ -150,7 +150,7 @@ def findBestTemplateMatch(possibleCard, simple = True):
 
 def templateMatching(possibleCard, simple = True):    
     imgToCheck = possibleCard.homography
-    
+
     # get only the symbol of the card
     if simple:
         imgToCheck = util.getRankSuitImgFromCardImg(imgToCheck)
@@ -295,7 +295,7 @@ while True:
     # Only continues processing if there is the right number of cards on the table
     if len(detectedCards) == cardsPerRound:
         # The person that played each card
-        playersAssociatedWithEachCard = associatePlayersWithCards(frame, detectedCards)
+        playersAssociatedWithEachCard = associatePlayersWithCards(detectedCards)
 
         game.gameRound(playersAssociatedWithEachCard)
         roundWinner = game.getRoundWinner()

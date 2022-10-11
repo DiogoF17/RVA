@@ -76,7 +76,7 @@ def orderCoordinates(quadrilateral):
 def getRankSuitImgFromCardImg(img):
     height, width, _ = img.shape
     
-    numberOfPixelsHorizontal = math.floor(width * 0.2)
+    numberOfPixelsHorizontal = math.floor(width * 0.15)
     numberOfPixelsVertical = math.floor(height * 0.3)
 
     rankSuitImg = img[:numberOfPixelsVertical, :numberOfPixelsHorizontal, :]
@@ -97,10 +97,6 @@ def identifyRankAndSuit(img):
         if stats[i, cv.CC_STAT_AREA] >= MIN_AREA_FOR_RANK_AND_SUIT:
             masks.append((labels == i).astype("uint8") * 255)
 
-    # it has to be exatly a rank and a suit
-    if len(masks) != 2:
-        return None
-
     # identify bounding rectangle of both rank and suit
     boundingRects = []
     for mask in masks:
@@ -108,20 +104,40 @@ def identifyRankAndSuit(img):
         
         x, y, width, height = cv.boundingRect(contours[0])
         boundingRects.append([x, y, width, height])
+        print(f"Width {width} | Height {height}")
+
+    # it has to be exatly a rank and a suit
+    if len(boundingRects) != 2:
+        return None
 
     # sort by y value
     # y value of rank is less than suit
     boundingRects.sort(key = lambda x: x[1])
 
+    # dimensions of image
+    height, width, _ = img.shape
+
+    padding = 10
+
     # img of rank
     rankX, rankY, rankWidth, rankHeight = boundingRects[0]
-    rankImg = img[rankY : rankY + rankHeight, rankX : rankX + rankWidth, :]
+    # added padding and assured that it not exceeded image dimensions
+    rankX1 = max(0, rankX - padding)
+    rankY1 = max(0, rankY - padding)
+    rankX2 = min(width - 1, rankX + rankWidth + padding)
+    rankY2 = min(height - 1, rankY + rankHeight + padding)
+    rankImg = img[rankY1 : rankY2, rankX1 : rankX2, :]
     rankImg = cv.resize(cv.resize(rankImg, [33, 62]), (0,0), fx=4, fy=4)
     cv.imshow("Rank", rankImg)
 
     # img of suit
     suitX, suitY, suitWidth, suitHeight = boundingRects[1]
-    suitImg = img[suitY : suitY + suitHeight, suitX : suitX + suitWidth, :]
+    # added padding and assured that it not exceeded image dimensions
+    suitX1 = max(0, suitX - padding)
+    suitY1 = max(0, suitY - padding)
+    suitX2 = min(width - 1, suitX + suitWidth + padding)
+    suitY2 = min(height - 1, suitY + suitHeight + padding)
+    suitImg = img[suitY1 : suitY2, suitX1 : suitX2, :]
     suitImg = cv.resize(cv.resize(suitImg, [33, 62]), (0,0), fx=4, fy=4)
     cv.imshow("Suit", suitImg)
 
