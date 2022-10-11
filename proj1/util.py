@@ -107,7 +107,8 @@ def identifyRankAndSuit(img):
         print(f"Width {width} | Height {height}")
 
     # it has to be exatly a rank and a suit
-    if len(boundingRects) != 2:
+    # len(boundingRects) == 3 in case of rank 10
+    if len(boundingRects) != 2 and len(boundingRects) != 3:
         return None
 
     # sort by y value
@@ -118,32 +119,66 @@ def identifyRankAndSuit(img):
     height, width, _ = img.shape
 
     padding = 10
-
-    # img of rank
-    rankX, rankY, rankWidth, rankHeight = boundingRects[0]
-    # added padding and assured that it not exceeded image dimensions
-    rankX1 = max(0, rankX - padding)
-    rankY1 = max(0, rankY - padding)
-    rankX2 = min(width - 1, rankX + rankWidth + padding)
-    rankY2 = min(height - 1, rankY + rankHeight + padding)
-    rankImg = img[rankY1 : rankY2, rankX1 : rankX2, :]
-    rankImg = cv.resize(cv.resize(rankImg, [33, 62]), (0,0), fx=4, fy=4)
-    cv.imshow("Rank", rankImg)
-
+    
+    # card rank 10
+    if len(boundingRects) == 3:
+        # img of rank
+        rankX, rankY, rankWidth, rankHeight = boundingRects[0]
+        rankXB, _,    rankWidthB, rankHeightB = boundingRects[1]
+        
+        # added padding and assured that it not exceeded image dimensions
+        # rankX1 = max(0, rankX - padding)
+        # rankY1 = max(0, rankY - padding)
+        # rankX2 = min(width - 1, rankX + rankWidth + padding)
+        # rankY2 = min(height - 1, rankY + rankHeight + padding)
+        # rankImg = img[rankY1 : rankY2, rankX1 : rankX2, :]
+        temp = rankXB - (rankX + rankWidth)
+        rankImg = img[rankY : rankY+rankHeight, rankX : rankX + rankWidth + rankWidthB + temp, :]
+    
+        rankImg = cv.resize(rankImg, [33, 62])
+        cv.imshow("Rank", rankImg)
+        
+        suitX, suitY, suitWidth, suitHeight = boundingRects[2]
+    else:
+        # img of rank
+        rankX, rankY, rankWidth, rankHeight = boundingRects[0]
+        # added padding and assured that it not exceeded image dimensions
+        # rankX1 = max(0, rankX - padding)
+        # rankY1 = max(0, rankY - padding)
+        # rankX2 = min(width - 1, rankX + rankWidth + padding)
+        # rankY2 = min(height - 1, rankY + rankHeight + padding)
+        # rankImg = img[rankY1 : rankY2, rankX1 : rankX2, :]
+        rankImg = img[rankY : rankY+rankHeight, rankX : rankX + rankWidth, :]
+    
+        rankImg = cv.resize(rankImg, [33, 62])
+        cv.imshow("Rank", rankImg)
+        
+        suitX, suitY, suitWidth, suitHeight = boundingRects[1]
+        
+        
     # img of suit
-    suitX, suitY, suitWidth, suitHeight = boundingRects[1]
+    # suitX, suitY, suitWidth, suitHeight = boundingRects[1]
     # added padding and assured that it not exceeded image dimensions
-    suitX1 = max(0, suitX - padding)
-    suitY1 = max(0, suitY - padding)
-    suitX2 = min(width - 1, suitX + suitWidth + padding)
-    suitY2 = min(height - 1, suitY + suitHeight + padding)
-    suitImg = img[suitY1 : suitY2, suitX1 : suitX2, :]
-    suitImg = cv.resize(cv.resize(suitImg, [33, 62]), (0,0), fx=4, fy=4)
+    # suitX1 = max(0, suitX - padding)
+    # suitY1 = max(0, suitY - padding)
+    # suitX2 = min(width - 1, suitX + suitWidth + padding)
+    # suitY2 = min(height - 1, suitY + suitHeight + padding)
+    # suitImg = img[suitY1 : suitY2, suitX1 : suitX2, :]
+    suitImg = img[suitY : suitY+suitHeight, suitX : suitX + suitWidth, :]
+    suitImg = cv.resize(suitImg, [33, 62])
     cv.imshow("Suit", suitImg)
 
+    rankImg = cv.cvtColor(rankImg, cv.COLOR_BGR2GRAY)
+    suitImg = cv.cvtColor(suitImg, cv.COLOR_BGR2GRAY)
+    _, rankImg = cv.threshold(rankImg, 127, 255, cv.THRESH_BINARY_INV)
+    _, suitImg = cv.threshold(suitImg, 127, 255, cv.THRESH_BINARY_INV)
+    
+    cv.imshow("Rank", rankImg)
+    cv.imshow("Suit", suitImg)
+    
     # draw bounding rect in rank suit img
-    for (x, y, width, height) in boundingRects:
-        cv.rectangle(img, (x, y), (x + width, y + height), (0, 255, 0), 2)
+    # for (x, y, width, height) in boundingRects:
+    #     cv.rectangle(img, (x, y), (x + width, y + height), (0, 255, 0), 2)
 
     return rankImg, suitImg
 
