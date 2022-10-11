@@ -1,6 +1,9 @@
 import math
 import cv2 as cv
-import numpy as np
+
+# -----------------------------------------------------------------------
+
+MIN_AREA_FOR_RANK_AND_SUIT = 1000
 
 # -----------------------------------------------------------------------
 
@@ -81,19 +84,51 @@ def getRankSuitImgFromCardImg(img):
     return cv.resize(cv.resize(rankSuitImg, [33, 62]), (0,0), fx=4, fy=4)
 
 def identifyRankAndSuit(img):
+    # binarize img
     grayImg = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
     _, binarizedImg = cv.threshold(grayImg, 127, 255, cv.THRESH_BINARY_INV)
     
-    numLabels, labels, _, _ = cv.connectedComponentsWithStats(binarizedImg)
+    # detect connected components
+    numLabels, labels, stats, _ = cv.connectedComponentsWithStats(binarizedImg)
 
-    kernel = np.ones((5,5),np.uint8)
-
+    # both the rank and suit have to have a considerable area, in comparison to noise
+    masks = []
     for i in range(1, numLabels):
-        mask = (labels == i).astype("uint8") * 255
-        # mask = cv.morphologyEx(mask, cv.MORPH_OPEN, kernel)
-        cv.imshow(f"Mask {i}", mask)
+        if stats[i, cv.CC_STAT_AREA] >= MIN_AREA_FOR_RANK_AND_SUIT:
+            masks.append((labels == i).astype("uint8") * 255)
 
+    # it has to be exatly a rank and a suit
+    if len(masks) != 2:
+        return None
+
+    # identify bounding rectangle of both rank and suit
+    boundingRects = []
+    for mask in masks:
         contours, _ = cv.findContours(image = mask, mode = cv.RETR_TREE, method = cv.CHAIN_APPROX_NONE)
         
         x, y, width, height = cv.boundingRect(contours[0])
+        boundingRects.append([x, y, width, height])
+
+    # sort by y value
+    # y value of rank is less than suit
+    boundingRects.sort(key = lambda x: x[1])
+
+    # img of rank
+    rankX, rankY, rankWidth, rankHeight = boundingRects[0]
+    rankImg = img[rankY : rankY + rankHeight, rankX : rankX + rankWidth, :]
+    rankImg = cv.resize(cv.resize(rankImg, [33, 62]), (0,0), fx=4, fy=4)
+    cv.imshow("Rank", rankImg)
+
+    # img of suit
+    suitX, suitY, suitWidth, suitHeight = boundingRects[1]
+    suitImg = img[suitY : suitY + suitHeight, suitX : suitX + suitWidth, :]
+    suitImg = cv.resize(cv.resize(suitImg, [33, 62]), (0,0), fx=4, fy=4)
+    cv.imshow("Suit", suitImg)
+
+    # draw bounding rect in rank suit img
+    for (x, y, width, height) in boundingRects:
         cv.rectangle(img, (x, y), (x + width, y + height), (0, 255, 0), 2)
+
+    return rankImg, suitImg
+
+

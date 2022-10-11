@@ -150,6 +150,7 @@ def findBestTemplateMatch(possibleCard, simple = True):
 
 def templateMatching(possibleCard, simple = True):    
     imgToCheck = possibleCard.homography
+    
     # get only the symbol of the card
     if simple:
         imgToCheck = util.getRankSuitImgFromCardImg(imgToCheck)
