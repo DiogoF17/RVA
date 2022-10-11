@@ -66,7 +66,7 @@ class HeartsGame:
         print("Selected Game: Hearts; Number Of Players: 4\n")
         
         self.lastRound = []
-        self.roundWinner = None
+        self.roundLoser = None
         self.score = {1: 0, 2: 0, 3: 0, 4: 0}
 
     def getCardsPerRound(self):
@@ -81,7 +81,7 @@ class HeartsGame:
         if self.isFirstRound() and not self.isValidRound(cardsNames):
             exit("ERROR! Can't play any Hearts or the Queen of Spades in the first round")
         
-        self.detectRoundWinner(round, cardsNames)
+        self.detectRoundLoser(round, cardsNames)
         self.updatePlayersScore(cardsNames)
         self.addPlayedRound(cardsNames)
         
@@ -103,12 +103,12 @@ class HeartsGame:
             
         return True
     
-    def detectRoundWinner(self, round, cardsNames):        
+    def detectRoundLoser(self, round, cardsNames):        
         ownerOfTheGreatestCard, greatestCard = self.resolveRoundStart(round, cardsNames)
         suitOfGreatestCard = cards.getCardSuit(ownerOfTheGreatestCard)
         
         currentPlayer = ownerOfTheGreatestCard
-        for i in range(1, self.numberOfPlayers - 1):
+        for _ in range(1, self.numberOfPlayers - 1):
             currentPlayer = (currentPlayer + 1) % self.numberOfPlayers
             currentPlayerCard = self.detectPlayerCard(currentPlayer)
             
@@ -118,13 +118,13 @@ class HeartsGame:
                 greatestCard = currentPlayerCard
                 suitOfGreatestCard = suitOfCurrentCard
             
-        self.roundWinner = ownerOfTheGreatestCard
-        print(f"Round Winner: Player {self.roundWinner} | {greatestCard}")
+        self.roundLoser = ownerOfTheGreatestCard
+        print(f"Round Loser: Player {self.roundLoser} | {greatestCard}")
     
     def resolveRoundStart(self, round, cardsNames):
         # it's not the first round of the game
         if not self.isFirstRound():
-            player = self.roundWinner
+            player = self.roundLoser
             card = self.detectPlayerCard(player, round)
         # it's the first round but i doesn't start with a 2 of clubs
         elif cards.TWO_CLUBS not in cardsNames:
@@ -137,7 +137,7 @@ class HeartsGame:
         return (player, card)
     
     def isFirstRound(self):
-        return self.roundWinner == None
+        return self.roundLoser == None
     
     def detectPlayerCard(self, player, round):
         for card in round:
@@ -155,7 +155,7 @@ class HeartsGame:
     
     def updatePlayersScore(self, cardsNames):
         scoreOnTheTable = self.computeScoreOnRound(cardsNames)
-        self.score[self.roundWinner] += scoreOnTheTable
+        self.score[self.roundLoser] += scoreOnTheTable
 
         print(f"Score On The Table: {scoreOnTheTable}")
     
@@ -170,8 +170,8 @@ class HeartsGame:
     def addPlayedRound(self, cardsNames):
         self.lastRound = cardsNames
         
-    def getRoundWinner(self):
-        return self.roundWinner
+    def getRoundLoser(self):
+        return self.roundLoser
 
     def gameEnded(self):
         for player in self.score:

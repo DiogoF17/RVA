@@ -265,6 +265,31 @@ def associatePlayersWithCards(detectedCards):
       
     return detectedCards
 
+# ---------------------------------------------------------------------
+
+def showTextInImg(img, position, text):
+    font = cv.FONT_HERSHEY_SIMPLEX  
+    fontScale = 1
+    color = (0, 255, 0)
+    thickness = 2
+    
+    img = cv.putText(img, text, position, font, 
+                    fontScale, color, thickness, cv.LINE_AA)
+
+def announceRoundWinnerOrLoser(img, text, player, detectedCards):
+    cardPosition = []
+    
+    for detectedCard in detectedCards:
+        if detectedCard.player == player:
+            cardPosition = detectedCard.quadrilateral.centroid
+
+    if cardPosition == []:
+        print("Could not show round winner")
+        return  
+    
+    cardPosition[0] = max(0, cardPosition[0] - 5)
+    showTextInImg(img, cardPosition, text)
+
 # ===================================MAIN======================================
 
 setUp()
@@ -295,10 +320,11 @@ while True:
     # Only continues processing if there is the right number of cards on the table
     if len(detectedCards) == cardsPerRound:
         # The person that played each card
-        playersAssociatedWithEachCard = associatePlayersWithCards(detectedCards)
+        detectedCards = associatePlayersWithCards(detectedCards)
 
-        game.gameRound(playersAssociatedWithEachCard)
-        roundWinner = game.getRoundWinner()
+        game.gameRound(detectedCards)
+        text, roundWinnerOrLoser = game.getRoundWinnerOrLoser()
+        announceRoundWinnerOrLoser(frame, text, roundWinnerOrLoser, detectedCards)
 
         print("###############################")
     
