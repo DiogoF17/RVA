@@ -77,4 +77,4 @@ def getRankSuitImgFromCardImg(img):
 
     rankSuitImg = img[:numberOfPixelsVertical, :numberOfPixelsHorizontal, :]
 
-    return cv.resize(rankSuitImg, [33, 62])
+    return cv.resize(cv.resize(rankSuitImg, [33, 62]), (0,0), fx=4, fy=4)

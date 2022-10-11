@@ -34,6 +34,7 @@ def setUp():
     # load simple template
     for fileName in cards.templateCardsSimple:
         img = cv.imread(fileName)
+        img = cv.resize(img, (0,0), fx=4, fy=4)
         # img = binarize(img)
         _, des = sift.detectAndCompute(img, None)
         templateCardsSimple.append(templateCard.TemplateCard(cards.templateCardsSimple[fileName], img, des))
