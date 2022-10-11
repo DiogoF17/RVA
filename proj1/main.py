@@ -3,13 +3,11 @@ import numpy as np
 import game.game as gamePackage
 import camera.remoteWebCam as remoteWebCamPackage
 import game.cards as cards
-import math
 import game.templateCard as templateCard
-import time
-from connectedComponent import ConnectedComponent
 from quadrilateral import Quadrilateral
 from card import Card
 import util
+from connectedComponent import ConnectedComponent
 
 # =============================GLOBAL VARIABLES================================
 
@@ -20,7 +18,7 @@ QUIT_KEY = ord("q")
 
 MIN_AREA_OF_CARDS = 5000
 MIN_MATCH_FOR_TEMPLATE = 0.7
-MIN_MATCH_FOR_FEATURE = 40
+MIN_MATCH_FOR_FEATURE = 20
 
 # ===============================FUNCTIONS=====================================
 
@@ -36,8 +34,12 @@ def setUp():
     # load simple template
     for fileName in cards.templateCardsSimple:
         img = cv.imread(fileName)
-        templateCardsSimple.append(templateCard.TemplateCard(cards.templateCardsSimple[fileName], img, None))
+        # img = binarize(img)
+        _, des = sift.detectAndCompute(img, None)
+        templateCardsSimple.append(templateCard.TemplateCard(cards.templateCardsSimple[fileName], img, des))
     print("Set up Completed!")
+
+# ---------------------------------------------------------------------
 
 def binarize(img, thresholdValue = 127):
     grayScaleImg = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
@@ -79,6 +81,25 @@ def detectPossibleCards(img):
     
     return quadrilaterals
 
+# ---------------------------------------------------------------------
+
+def calculateHomographyAndWarpImage(img, quadrilateral, coord_dst = np.array([[0, 0], [499, 0], [0, 725], [499, 725]])):
+    coord_src = np.array(util.orderCoordinates(quadrilateral))
+
+    # coord_src and coord_dst are numpy arrays of points
+    # in source and destination images. We need at least
+    # corresponding points.
+    homography, _ = cv.findHomography(coord_src, coord_dst)
+    
+    # The calculated homography can be used to warp
+    # the source image to destination. Size is the
+    # size (width,height) of result
+    width = (coord_dst[1][0] - coord_dst[0][0]) + 1
+    height = (coord_dst[2][1] - coord_dst[0][0]) + 1
+    result = cv.warpPerspective(img, homography, [width, height])
+
+    return result
+
 def findBestTemplateMatch(possibleCard, simple = True):
     bestMatchValue = -1
     bestMatchName = None
@@ -89,13 +110,33 @@ def findBestTemplateMatch(possibleCard, simple = True):
 
     # possibleCard = binarize(possibleCard)
     cv.imshow(f"Image To Check", possibleCard)
+    # cv.imshow(f"Template", binarize(templateCardsToBeCompared[0].img))
 
-    for templateCardToBeCompared in templateCardsToBeCompared:
-        res = cv.matchTemplate(possibleCard, templateCardToBeCompared.img, cv.TM_CCOEFF_NORMED)
-        _, max_val, _, _ = cv.minMaxLoc(res)
-        if(max_val >= MIN_MATCH_FOR_TEMPLATE and max_val > bestMatchValue):
-            bestMatchValue = max_val
-            bestMatchName = templateCardToBeCompared.name
+    print("\n############################################\n")
+    for method in [cv.TM_CCOEFF, cv.TM_CCOEFF_NORMED, cv.TM_CCORR,
+        cv.TM_CCORR_NORMED, cv.TM_SQDIFF, cv.TM_SQDIFF_NORMED]:
+        for templateCardToBeCompared in templateCardsToBeCompared:
+
+            res = cv.matchTemplate(possibleCard, templateCardToBeCompared.img, method)
+            min_val, max_val, _, _ = cv.minMaxLoc(res)
+
+            if method in [cv.TM_SQDIFF, cv.TM_SQDIFF_NORMED]:
+                val = min_val
+                if(val < bestMatchValue):
+                    bestMatchValue = val
+                    bestMatchName = templateCardToBeCompared.name
+            else:
+                val = max_val
+                if(val > bestMatchValue):
+                    bestMatchValue = val
+                    bestMatchName = templateCardToBeCompared.name
+
+        print(f"Method: {method} | Val: {bestMatchValue} | Name: {bestMatchName}")
+
+            # if(max_val >= MIN_MATCH_FOR_TEMPLATE and max_val > bestMatchValue):
+            #     bestMatchValue = max_val
+            #     bestMatchName = templateCardToBeCompared.name
+
 
         # diffImg = cv.absdiff(binarize(templateCardToBeCompared.img), possibleCard)
         # val = int(np.sum(diffImg)/255)
@@ -107,10 +148,10 @@ def findBestTemplateMatch(possibleCard, simple = True):
     return bestMatchName, bestMatchValue
 
 def templateMatching(possibleCard, simple = True):    
-    # get only the symbol of the card
     imgToCheck = possibleCard.homography
+    # get only the symbol of the card
     if simple:
-        imgToCheck = util.getSuitImgFromCardImg(imgToCheck)
+        imgToCheck = util.getRankSuitImgFromCardImg(imgToCheck)
     
     matchName, matchValue = findBestTemplateMatch(imgToCheck, simple = simple)
     
@@ -120,15 +161,24 @@ def templateMatching(possibleCard, simple = True):
 
     return None
 
-def featureMatching(possibleCard):
+def featureMatching(possibleCard, simple = True):
     bestNumberOfMatches = -1
     bestMatchName = None
+
+    imgToCheck = possibleCard.homography
+    templateCardsToBeCompared = templateCards
+
+    # get only the symbol of the card
+    if simple:
+        templateCardsToBeCompared = templateCardsSimple
+        imgToCheck = util.getRankSuitImgFromCardImg(imgToCheck)
     
+    cv.imshow(f"Image To Check", imgToCheck)
+
     sift = cv.SIFT_create()
     
-    _, des1 = sift.detectAndCompute(possibleCard, None)
-    
-    templateCardsToBeCompared = templateCards
+    # imgToCheck = binarize(imgToCheck)
+    _, des1 = sift.detectAndCompute(imgToCheck, None)
     
     FLANN_INDEX_KDTREE = 1
     index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
@@ -152,23 +202,9 @@ def featureMatching(possibleCard):
             
     if(bestMatchName != None):
         print(f"Card Name: {bestMatchName} | Nº Of Matches: {bestNumberOfMatches}")
+        return Card(possibleCard, bestMatchName)
 
-def calculateHomographyAndWarpImage(img, quadrilateral, coord_dst = np.array([[0, 0], [499, 0], [0, 725], [499, 725]])):
-    coord_src = np.array(util.orderCoordinates(quadrilateral))
-
-    # coord_src and coord_dst are numpy arrays of points
-    # in source and destination images. We need at least
-    # corresponding points.
-    homography, _ = cv.findHomography(coord_src, coord_dst)
-    
-    # The calculated homography can be used to warp
-    # the source image to destination. Size is the
-    # size (width,height) of result
-    width = (coord_dst[1][0] - coord_dst[0][0]) + 1
-    height = (coord_dst[2][1] - coord_dst[0][0]) + 1
-    result = cv.warpPerspective(img, homography, [width, height])
-
-    return result
+    return None
 
 def identifyPossibleCards(img, possibleCards, usingHomography = True, simple = True):
     identifiedCards = []
@@ -180,13 +216,15 @@ def identifyPossibleCards(img, possibleCards, usingHomography = True, simple = T
             # cv.imshow(f"Output {index}", possibleCard.homography)
             
             identifiedCard = templateMatching(possibleCard, simple = simple)
+            # identifiedCard = featureMatching(possibleCard, simple = simple)
             if identifiedCard != None:
                 identifiedCards.append(identifiedCard)
 
-            # featureMatching(homography)
             index += 1
             
     return identifiedCards
+
+# ---------------------------------------------------------------------
 
 # 192.168.1.74:8080
 
@@ -248,7 +286,7 @@ while True:
     # if len(detectedCards) == cardsPerRound:
 
     # Which card is which
-    detectedCards = identifyPossibleCards(frame, detectedPossibleCards, simple=True)
+    detectedCards = identifyPossibleCards(frame, detectedPossibleCards, simple = True)
 
     # Only continues processing if there is the right number of cards on the table
     if len(detectedCards) == cardsPerRound:
@@ -265,8 +303,6 @@ while True:
     key = cv.waitKey(1)
     if key == QUIT_KEY:
         break
-
-    # time.sleep(0.05)
     
 cv.destroyAllWindows()
     

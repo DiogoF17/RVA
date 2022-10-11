@@ -1,6 +1,8 @@
 import math
 import cv2 as cv
 
+# -----------------------------------------------------------------------
+
 def orderCoordinates(quadrilateral):
     # Top Left (TL), Top Right(TR), Bottom Left(BL), Bottom Right(BR)
     # TL --- TR
@@ -19,11 +21,11 @@ def orderCoordinates(quadrilateral):
 
     # Horizontal Oriented
     if quadrilateral.width >= quadrilateral.height * 1.4:
-        print("HORIZONTAL")
+        # print("HORIZONTAL")
         return [bottomLeft, topLeft, bottomRight, topRight]
     # Vertical Oriented
     elif quadrilateral.width <= quadrilateral.height * 0.6:
-        print("VERTICAL")
+        # print("VERTICAL")
         return [topLeft, topRight, bottomLeft, bottomRight]
     # Diamond Oriented
     else:
@@ -37,11 +39,11 @@ def orderCoordinates(quadrilateral):
             
             # Tilted to the right
             if abs(coords[-1][0] - coords[-2][0]) < abs(coords[-1][0] - coords[-3][0]):
-                print("ALIGNED BUT TILTED TO THE RIGHT")
+                # print("ALIGNED BUT TILTED TO THE RIGHT")
                 return [coords[0], coords[1], coords[2], coords[3]]
             # Tilted to the left
             else:
-                print("ALIGNED BUT TILTED TO THE LEFT")
+                # print("ALIGNED BUT TILTED TO THE LEFT")
                 return [coords[2], coords[0], coords[1], coords[3]]
 
         # card is extremely inclined, almost horizontal
@@ -49,28 +51,30 @@ def orderCoordinates(quadrilateral):
 
             # Tilted to the right
             if coords[1][0] < coords[2][0]:
-                print("EXTREMELY TILTED TO RIGHT")
+                # print("EXTREMELY TILTED TO RIGHT")
                 return [coords[0], coords[2], coords[1], coords[3]]
             # Tilted to the left
             else:
-                print("EXTREMELY TILTED TO LEFT")
+                # print("EXTREMELY TILTED TO LEFT")
                 return [coords[2], coords[0], coords[3], coords[1]]
 
         # card is normally inclined, almost vertical
         else:
             # Tilted to the right
             if coords[1][0] > coords[2][0]:
-                print("NORMALLY TILTED TO RIGHT")
+                # print("NORMALLY TILTED TO RIGHT")
                 return [coords[0], coords[1], coords[2], coords[3]]
             # Tilted to the left
             else:
-                print("NORMALLY TILTED TO LEFT")
+                # print("NORMALLY TILTED TO LEFT")
                 return [coords[1], coords[0], coords[3], coords[2]]
 
-def getSuitImgFromCardImg(img):
+def getRankSuitImgFromCardImg(img):
     height, width, _ = img.shape
     
     numberOfPixelsHorizontal = math.floor(width * 0.2)
     numberOfPixelsVertical = math.floor(height * 0.3)
 
-    return cv.resize(img[:numberOfPixelsVertical, :numberOfPixelsHorizontal, :], [33, 62])
+    rankSuitImg = img[:numberOfPixelsVertical, :numberOfPixelsHorizontal, :]
+
+    return cv.resize(rankSuitImg, [33, 62])
