@@ -113,7 +113,7 @@ def findBestTemplateMatch(possibleCard, simple = True):
     cv.imshow(f"Image To Check", possibleCard)
     # cv.imshow(f"Template", binarize(templateCardsToBeCompared[0].img))
 
-    print("\n############################################\n")
+    # print("\n############################################\n")
     for method in [cv.TM_CCOEFF, cv.TM_CCOEFF_NORMED, cv.TM_CCORR,
         cv.TM_CCORR_NORMED, cv.TM_SQDIFF, cv.TM_SQDIFF_NORMED]:
         for templateCardToBeCompared in templateCardsToBeCompared:
@@ -132,7 +132,7 @@ def findBestTemplateMatch(possibleCard, simple = True):
                     bestMatchValue = val
                     bestMatchName = templateCardToBeCompared.name
 
-        print(f"Method: {method} | Val: {bestMatchValue} | Name: {bestMatchName}")
+        # print(f"Method: {method} | Val: {bestMatchValue} | Name: {bestMatchName}")
 
             # if(max_val >= MIN_MATCH_FOR_TEMPLATE and max_val > bestMatchValue):
             #     bestMatchValue = max_val
@@ -153,6 +153,7 @@ def templateMatching(possibleCard, simple = True):
     # get only the symbol of the card
     if simple:
         imgToCheck = util.getRankSuitImgFromCardImg(imgToCheck)
+        util.identifyRankAndSuit(imgToCheck)
     
     matchName, matchValue = findBestTemplateMatch(imgToCheck, simple = simple)
     
@@ -173,6 +174,7 @@ def featureMatching(possibleCard, simple = True):
     if simple:
         templateCardsToBeCompared = templateCardsSimple
         imgToCheck = util.getRankSuitImgFromCardImg(imgToCheck)
+        util.identifyRankAndSuit(imgToCheck)
     
     cv.imshow(f"Image To Check", imgToCheck)
 

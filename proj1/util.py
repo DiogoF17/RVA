@@ -1,5 +1,6 @@
 import math
 import cv2 as cv
+import numpy as np
 
 # -----------------------------------------------------------------------
 
@@ -78,3 +79,21 @@ def getRankSuitImgFromCardImg(img):
     rankSuitImg = img[:numberOfPixelsVertical, :numberOfPixelsHorizontal, :]
 
     return cv.resize(cv.resize(rankSuitImg, [33, 62]), (0,0), fx=4, fy=4)
+
+def identifyRankAndSuit(img):
+    grayImg = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+    _, binarizedImg = cv.threshold(grayImg, 127, 255, cv.THRESH_BINARY_INV)
+    
+    numLabels, labels, _, _ = cv.connectedComponentsWithStats(binarizedImg)
+
+    kernel = np.ones((5,5),np.uint8)
+
+    for i in range(1, numLabels):
+        mask = (labels == i).astype("uint8") * 255
+        # mask = cv.morphologyEx(mask, cv.MORPH_OPEN, kernel)
+        cv.imshow(f"Mask {i}", mask)
+
+        contours, _ = cv.findContours(image = mask, mode = cv.RETR_TREE, method = cv.CHAIN_APPROX_NONE)
+        
+        x, y, width, height = cv.boundingRect(contours[0])
+        cv.rectangle(img, (x, y), (x + width, y + height), (0, 255, 0), 2)
