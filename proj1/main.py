@@ -11,8 +11,8 @@ from connectedComponent import ConnectedComponent
 
 # =============================GLOBAL VARIABLES================================
 
-templateCards = []
-templateCardsSimple = []
+templateCardsRanks = []
+templateCardsSuits = []
 
 QUIT_KEY = ord("q")
 
@@ -24,20 +24,31 @@ MIN_MATCH_FOR_FEATURE = 20
 
 def setUp():
     print("Setting up...")
-    sift = cv.SIFT_create()
+    # sift = cv.SIFT_create()
     # load normal template
-    for fileName in cards.templateCards:
-        img = cv.imread(fileName)
-        _, des = sift.detectAndCompute(img, None)
-        templateCards.append(templateCard.TemplateCard(cards.templateCards[fileName], img, des))
+    # for fileName in cards.templateCards:
+    #     img = cv.imread(fileName)
+    #     _, des = sift.detectAndCompute(img, None)
+    #     templateCards.append(templateCard.TemplateCard(cards.templateCards[fileName], img, des))
 
     # load simple template
-    for fileName in cards.templateCardsSimple:
-        img = cv.imread(fileName)
-        img = cv.resize(img, (0,0), fx=4, fy=4)
-        # img = binarize(img)
-        _, des = sift.detectAndCompute(img, None)
-        templateCardsSimple.append(templateCard.TemplateCard(cards.templateCardsSimple[fileName], img, des))
+    # for fileName in cards.templateCardsSimple:
+    #     img = cv.imread(fileName)
+    #     img = cv.resize(img, (0,0), fx=4, fy=4)
+    #     # img = binarize(img)
+    #     _, des = sift.detectAndCompute(img, None)
+    #     templateCardsSimple.append(templateCard.TemplateCard(cards.templateCardsSimple[fileName], img, des))
+    
+    # load ranks template
+    for fileName in cards.templateCardsRanks:
+        img = cv.imread(fileName,0)
+        templateCardsRanks.append(templateCard.TemplateCard(cards.templateCardsRanks[fileName], img, None))
+        
+    # load suit template
+    for fileName in cards.templateCardsSuits:
+        img = cv.imread(fileName,0)
+        templateCardsSuits.append(templateCard.TemplateCard(cards.templateCardsSuits[fileName], img, None))
+    
     print("Set up Completed!")
 
 # ---------------------------------------------------------------------
@@ -69,8 +80,16 @@ def detectQuadrilaterals(components, overlapping = False):
         # if overlapping is not allowed we only keep quadrilaterals
         if len(coordinates) != 4 and not overlapping:
             continue
-
-        quadrilateral = Quadrilateral(component.centroid, contours[0], coordinates[:, 0])
+        
+        # refine quadrilateral coords
+        # define the criteria to stop. We stop it after a specified number of iterations
+        # or a certain accuracy is achieved, whichever occurs first.
+        criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 100, 0.001)
+        
+        # Refine the corners using cv2.cornerSubPix()
+        corners =np.int0(cv.cornerSubPix(component.mask,np.float32(coordinates[:,0]),(5,5),(-1,-1),criteria))
+        
+        quadrilateral = Quadrilateral(component.centroid, contours[0], corners)
         quadrilaterals.append(quadrilateral)
     
     return quadrilaterals
@@ -102,37 +121,69 @@ def calculateHomographyAndWarpImage(img, quadrilateral, coord_dst = np.array([[0
     return result
 
 def findBestTemplateMatch(possibleCard, simple = True):
-    bestMatchValue = -1
-    bestMatchName = None
+    bestMatchValue = None
+    bestMatchRank = None
+    bestMatchSuit = None
 
-    templateCardsToBeCompared = templateCards
-    if simple:
-        templateCardsToBeCompared = templateCardsSimple
+    # templateCardsToBeCompared = templateCards
+    # if simple:
+    #     templateCardsToBeCompared = templateCardsSimple
 
     # possibleCard = binarize(possibleCard)
-    cv.imshow(f"Image To Check", possibleCard)
+    cv.imshow("Image To Check", possibleCard)
     # cv.imshow(f"Template", binarize(templateCardsToBeCompared[0].img))
+
+    possibleCard = util.identifyRankAndSuit(possibleCard)
+    
+    if possibleCard == None:
+       return None, bestMatchValue
+   
+    possibleRank, possibleSuit = possibleCard
+    
+    print(possibleRank.shape)
+    print(templateCardsRanks[0].img.shape)
+    print(possibleSuit.shape)
+    print(templateCardsSuits[0].img.shape)
 
     # print("\n############################################\n")
     for method in [cv.TM_CCOEFF, cv.TM_CCOEFF_NORMED, cv.TM_CCORR,
         cv.TM_CCORR_NORMED, cv.TM_SQDIFF, cv.TM_SQDIFF_NORMED]:
-        for templateCardToBeCompared in templateCardsToBeCompared:
-
-            res = cv.matchTemplate(possibleCard, templateCardToBeCompared.img, method)
+        
+        for templateCardRank in templateCardsRanks:
+            
+            res = cv.matchTemplate(possibleRank, templateCardRank.img, method)
             min_val, max_val, _, _ = cv.minMaxLoc(res)
 
             if method in [cv.TM_SQDIFF, cv.TM_SQDIFF_NORMED]:
                 val = min_val
-                if(val < bestMatchValue):
+                if bestMatchValue == None or val < bestMatchValue:
                     bestMatchValue = val
-                    bestMatchName = templateCardToBeCompared.name
+                    bestMatchRank = templateCardRank.name
             else:
                 val = max_val
-                if(val > bestMatchValue):
+                if bestMatchValue == None or val > bestMatchValue:
                     bestMatchValue = val
-                    bestMatchName = templateCardToBeCompared.name
+                    bestMatchRank = templateCardRank.name
+        
+        bestMatchValue = None
+        
+        for templateCardSuit in templateCardsSuits:
 
-        # print(f"Method: {method} | Val: {bestMatchValue} | Name: {bestMatchName}")
+            res = cv.matchTemplate(possibleSuit, templateCardSuit.img, method)
+            min_val, max_val, _, _ = cv.minMaxLoc(res)
+
+            if method in [cv.TM_SQDIFF, cv.TM_SQDIFF_NORMED]:
+                val = min_val
+                if bestMatchValue == None or val < bestMatchValue:
+                    bestMatchValue = val
+                    bestMatchSuit = templateCardSuit.name
+            else:
+                val = max_val
+                if bestMatchValue == None or val > bestMatchValue:
+                    bestMatchValue = val
+                    bestMatchSuit = templateCardSuit.name
+
+        print(f"Method: {method} | Val: {bestMatchValue} | Name: {bestMatchRank + bestMatchSuit}")
 
             # if(max_val >= MIN_MATCH_FOR_TEMPLATE and max_val > bestMatchValue):
             #     bestMatchValue = max_val
@@ -146,7 +197,7 @@ def findBestTemplateMatch(possibleCard, simple = True):
         #     bestMatchValue = val
         #     bestMatchName = templateCardToBeCompared.name
 
-    return bestMatchName, bestMatchValue
+    return bestMatchRank + bestMatchSuit, bestMatchValue
 
 def templateMatching(possibleCard, simple = True):    
     imgToCheck = possibleCard.homography
@@ -164,51 +215,51 @@ def templateMatching(possibleCard, simple = True):
 
     return None
 
-def featureMatching(possibleCard, simple = True):
-    bestNumberOfMatches = -1
-    bestMatchName = None
+# def featureMatching(possibleCard, simple = True):
+#     bestNumberOfMatches = -1
+#     bestMatchName = None
 
-    imgToCheck = possibleCard.homography
-    templateCardsToBeCompared = templateCards
+#     imgToCheck = possibleCard.homography
+#     templateCardsToBeCompared = templateCards
 
-    # get only the symbol of the card
-    if simple:
-        templateCardsToBeCompared = templateCardsSimple
-        imgToCheck = util.getRankSuitImgFromCardImg(imgToCheck)
-        util.identifyRankAndSuit(imgToCheck)
+#     # get only the symbol of the card
+#     if simple:
+#         templateCardsToBeCompared = templateCardsSimple
+#         imgToCheck = util.getRankSuitImgFromCardImg(imgToCheck)
+#         util.identifyRankAndSuit(imgToCheck)
     
-    cv.imshow(f"Image To Check", imgToCheck)
+#     cv.imshow(f"Image To Check", imgToCheck)
 
-    sift = cv.SIFT_create()
+#     sift = cv.SIFT_create()
     
-    # imgToCheck = binarize(imgToCheck)
-    _, des1 = sift.detectAndCompute(imgToCheck, None)
+#     # imgToCheck = binarize(imgToCheck)
+#     _, des1 = sift.detectAndCompute(imgToCheck, None)
     
-    FLANN_INDEX_KDTREE = 1
-    index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
-    search_params = dict(checks = 50)
+#     FLANN_INDEX_KDTREE = 1
+#     index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
+#     search_params = dict(checks = 50)
      
-    flann = cv.FlannBasedMatcher(index_params, search_params)   
+#     flann = cv.FlannBasedMatcher(index_params, search_params)   
  
-    for templateCardToBeCompared in templateCardsToBeCompared:
+#     for templateCardToBeCompared in templateCardsToBeCompared:
         
-        matches = flann.knnMatch(des1, templateCardToBeCompared.descriptor, k=2)
+#         matches = flann.knnMatch(des1, templateCardToBeCompared.descriptor, k=2)
         
-        # store all the good matches as per Lowe's ratio test.
-        good = []
-        for m,n in matches:
-            if m.distance < 0.7 * n.distance:
-                good.append(m)
+#         # store all the good matches as per Lowe's ratio test.
+#         good = []
+#         for m,n in matches:
+#             if m.distance < 0.7 * n.distance:
+#                 good.append(m)
                 
-        if (len(good) >= MIN_MATCH_FOR_FEATURE and len(good) > bestNumberOfMatches):
-            bestNumberOfMatches = len(good)
-            bestMatchName = templateCardToBeCompared.name
+#         if (len(good) >= MIN_MATCH_FOR_FEATURE and len(good) > bestNumberOfMatches):
+#             bestNumberOfMatches = len(good)
+#             bestMatchName = templateCardToBeCompared.name
             
-    if(bestMatchName != None):
-        print(f"Card Name: {bestMatchName} | Nº Of Matches: {bestNumberOfMatches}")
-        return Card(possibleCard, bestMatchName)
+#     if(bestMatchName != None):
+#         print(f"Card Name: {bestMatchName} | Nº Of Matches: {bestNumberOfMatches}")
+#         return Card(possibleCard, bestMatchName)
 
-    return None
+#     return None
 
 def identifyPossibleCards(img, possibleCards, usingHomography = True, simple = True):
     identifiedCards = []

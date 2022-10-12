@@ -76,21 +76,23 @@ def orderCoordinates(quadrilateral):
 def getRankSuitImgFromCardImg(img):
     height, width, _ = img.shape
     
-    numberOfPixelsHorizontal = math.floor(width * 0.15)
+    numberOfPixelsHorizontal = math.floor(width * 0.17)
     numberOfPixelsVertical = math.floor(height * 0.3)
 
-    rankSuitImg = img[:numberOfPixelsVertical, :numberOfPixelsHorizontal, :]
+    rankSuitImg = img[:numberOfPixelsVertical, 10:80, :]
 
     return cv.resize(cv.resize(rankSuitImg, [33, 62]), (0,0), fx=4, fy=4)
 
 def identifyRankAndSuit(img):
     # binarize img
     grayImg = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-    _, binarizedImg = cv.threshold(grayImg, 127, 255, cv.THRESH_BINARY_INV)
+    _, binarizedImg = cv.threshold(grayImg, 180, 255, cv.THRESH_BINARY_INV)
+    
+    cv.imshow("bin", binarizedImg)
     
     # detect connected components
     numLabels, labels, stats, _ = cv.connectedComponentsWithStats(binarizedImg)
-
+    
     # both the rank and suit have to have a considerable area, in comparison to noise
     masks = []
     for i in range(1, numLabels):
@@ -103,8 +105,14 @@ def identifyRankAndSuit(img):
         contours, _ = cv.findContours(image = mask, mode = cv.RETR_TREE, method = cv.CHAIN_APPROX_NONE)
         
         x, y, width, height = cv.boundingRect(contours[0])
+        
+        # temp = abs(1 - width/height)
+        # if temp <= 0.3:
         boundingRects.append([x, y, width, height])
-        print(f"Width {width} | Height {height}")
+            # print(f"Width {width} | Height {height} | Temp {temp}")
+        # else:
+            # cv.rectangle(img, (x, y), (x + width, y + height), (0, 0, 255), 2)
+            # print(f"Width2 {width} | Height2 {height} | Temp {temp}")
 
     # it has to be exatly a rank and a suit
     # len(boundingRects) == 3 in case of rank 10
@@ -113,12 +121,12 @@ def identifyRankAndSuit(img):
 
     # sort by y value
     # y value of rank is less than suit
-    boundingRects.sort(key = lambda x: x[1])
+    boundingRects.sort(key = lambda x: (x[1], x[0]))
 
     # dimensions of image
     height, width, _ = img.shape
 
-    padding = 10
+    # padding = 10
     
     # card rank 10
     if len(boundingRects) == 3:
@@ -132,12 +140,8 @@ def identifyRankAndSuit(img):
         # rankX2 = min(width - 1, rankX + rankWidth + padding)
         # rankY2 = min(height - 1, rankY + rankHeight + padding)
         # rankImg = img[rankY1 : rankY2, rankX1 : rankX2, :]
-        temp = rankXB - (rankX + rankWidth)
-        rankImg = img[rankY : rankY+rankHeight, rankX : rankX + rankWidth + rankWidthB + temp, :]
-    
-        rankImg = cv.resize(rankImg, [33, 62])
-        cv.imshow("Rank", rankImg)
-        
+        rankImg = binarizedImg[rankY : rankY+rankHeight, rankX : rankXB + rankWidthB]
+
         suitX, suitY, suitWidth, suitHeight = boundingRects[2]
     else:
         # img of rank
@@ -148,14 +152,12 @@ def identifyRankAndSuit(img):
         # rankX2 = min(width - 1, rankX + rankWidth + padding)
         # rankY2 = min(height - 1, rankY + rankHeight + padding)
         # rankImg = img[rankY1 : rankY2, rankX1 : rankX2, :]
-        rankImg = img[rankY : rankY+rankHeight, rankX : rankX + rankWidth, :]
-    
-        rankImg = cv.resize(rankImg, [33, 62])
-        cv.imshow("Rank", rankImg)
-        
+        rankImg = binarizedImg[rankY : rankY+rankHeight, rankX : rankX + rankWidth]
+
         suitX, suitY, suitWidth, suitHeight = boundingRects[1]
         
-        
+    rankImg = cv.resize(rankImg, [33, 62])
+    
     # img of suit
     # suitX, suitY, suitWidth, suitHeight = boundingRects[1]
     # added padding and assured that it not exceeded image dimensions
@@ -164,14 +166,8 @@ def identifyRankAndSuit(img):
     # suitX2 = min(width - 1, suitX + suitWidth + padding)
     # suitY2 = min(height - 1, suitY + suitHeight + padding)
     # suitImg = img[suitY1 : suitY2, suitX1 : suitX2, :]
-    suitImg = img[suitY : suitY+suitHeight, suitX : suitX + suitWidth, :]
+    suitImg = binarizedImg[suitY : suitY+suitHeight, suitX : suitX + suitWidth]
     suitImg = cv.resize(suitImg, [33, 62])
-    cv.imshow("Suit", suitImg)
-
-    rankImg = cv.cvtColor(rankImg, cv.COLOR_BGR2GRAY)
-    suitImg = cv.cvtColor(suitImg, cv.COLOR_BGR2GRAY)
-    _, rankImg = cv.threshold(rankImg, 127, 255, cv.THRESH_BINARY_INV)
-    _, suitImg = cv.threshold(suitImg, 127, 255, cv.THRESH_BINARY_INV)
     
     cv.imshow("Rank", rankImg)
     cv.imshow("Suit", suitImg)
