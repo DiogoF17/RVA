@@ -17,7 +17,7 @@ templateCardsSuits = []
 QUIT_KEY = ord("q")
 
 MIN_AREA_OF_CARDS = 5000
-MIN_MATCH_FOR_TEMPLATE = 0.7
+MIN_MATCH_FOR_TEMPLATE = 0.8
 MIN_MATCH_FOR_FEATURE = 20
 
 # ===============================FUNCTIONS=====================================
@@ -111,68 +111,51 @@ def findBestTemplateMatch(possibleCard):
     bestMatchRank = None
     bestMatchSuit = None
 
-    cv.imshow("Image To Check", possibleCard)
-
     possibleCard = util.identifyRankAndSuit(possibleCard)
     if possibleCard == None:
        return None, bestMatchValue
    
     possibleRank, possibleSuit = possibleCard
 
-    for method in [cv.TM_CCOEFF, cv.TM_CCOEFF_NORMED, cv.TM_CCORR,
-        cv.TM_CCORR_NORMED, cv.TM_SQDIFF, cv.TM_SQDIFF_NORMED]:
+    for templateCardRank in templateCardsRanks:
         
-        for templateCardRank in templateCardsRanks:
-            
-            res = cv.matchTemplate(possibleRank, templateCardRank.img, method)
-            min_val, max_val, _, _ = cv.minMaxLoc(res)
-
-            if method in [cv.TM_SQDIFF, cv.TM_SQDIFF_NORMED]:
-                val = min_val
-                if bestMatchValue == None or val < bestMatchValue:
-                    bestMatchValue = val
-                    bestMatchRank = templateCardRank.name
-            else:
-                val = max_val
-                if bestMatchValue == None or val > bestMatchValue:
-                    bestMatchValue = val
-                    bestMatchRank = templateCardRank.name
+        res = cv.matchTemplate(possibleRank, templateCardRank.img,  cv.TM_CCORR_NORMED)
+        _, max_val, _, _ = cv.minMaxLoc(res)
         
-        bestMatchValue = None
-        
-        for templateCardSuit in templateCardsSuits:
+        val = max_val
+        if (bestMatchValue == None or val > bestMatchValue) and val >= MIN_MATCH_FOR_TEMPLATE:
+            bestMatchValue = val
+            bestMatchRank = templateCardRank.name
+    
+    
+    if bestMatchRank == None:
+        return None, bestMatchValue
+    
+    bestMatchValue = None
+    
+    for templateCardSuit in templateCardsSuits:
 
-            res = cv.matchTemplate(possibleSuit, templateCardSuit.img, method)
-            min_val, max_val, _, _ = cv.minMaxLoc(res)
+        res = cv.matchTemplate(possibleSuit, templateCardSuit.img,  cv.TM_CCORR_NORMED)
+        _, max_val, _, _ = cv.minMaxLoc(res)
 
-            if method in [cv.TM_SQDIFF, cv.TM_SQDIFF_NORMED]:
-                val = min_val
-                if bestMatchValue == None or val < bestMatchValue:
-                    bestMatchValue = val
-                    bestMatchSuit = templateCardSuit.name
-            else:
-                val = max_val
-                if bestMatchValue == None or val > bestMatchValue:
-                    bestMatchValue = val
-                    bestMatchSuit = templateCardSuit.name
-
-        print(f"Method: {method} | Val: {bestMatchValue} | Name: {bestMatchRank + bestMatchSuit}")
-
-            # if(max_val >= MIN_MATCH_FOR_TEMPLATE and max_val > bestMatchValue):
-            #     bestMatchValue = max_val
-            #     bestMatchName = templateCardToBeCompared.name
-
+        val = max_val
+        if (bestMatchValue == None or val > bestMatchValue) and val >= MIN_MATCH_FOR_TEMPLATE:
+            bestMatchValue = val
+            bestMatchSuit = templateCardSuit.name
+     
+    if bestMatchSuit == None:
+        return None, bestMatchValue
+    
     return bestMatchRank + bestMatchSuit, bestMatchValue
 
-def templateMatching(possibleCard, simple = True):    
+def templateMatching(possibleCard):    
     imgToCheck = possibleCard.homography
 
     # get only the symbol of the card
-    if simple:
-        imgToCheck = util.getRankSuitImgFromCardImg(imgToCheck)
-        util.identifyRankAndSuit(imgToCheck)
-    
-    matchName, matchValue = findBestTemplateMatch(imgToCheck, simple = simple)
+    imgToCheck = util.getRankSuitImgFromCardImg(imgToCheck)
+    util.identifyRankAndSuit(imgToCheck)
+
+    matchName, matchValue = findBestTemplateMatch(imgToCheck)
     
     if(matchName != None):
         print(f"Card Name: {matchName} | Match Value: {matchValue}")
@@ -226,21 +209,17 @@ def templateMatching(possibleCard, simple = True):
 
 #     return None
 
-def identifyPossibleCards(img, possibleCards, usingHomography = True, simple = True):
+def identifyPossibleCards(img, possibleCards, usingHomography = True):
     identifiedCards = []
-    index = 0
+   
     if usingHomography:
         for possibleCard in possibleCards:
             possibleCard.homography = calculateHomographyAndWarpImage(img, possibleCard)
-            
-            # cv.imshow(f"Output {index}", possibleCard.homography)
-            
-            identifiedCard = templateMatching(possibleCard, simple = simple)
-            # identifiedCard = featureMatching(possibleCard, simple = simple)
+                        
+            identifiedCard = templateMatching(possibleCard)
+            # identifiedCard = featureMatching(possibleCard)
             if identifiedCard != None:
                 identifiedCards.append(identifiedCard)
-
-            index += 1
             
     return identifiedCards
 
@@ -270,14 +249,14 @@ def associatePlayersWithCards(detectedCards):
     yCentroid.sort(key=(lambda x : x[0]))
         
     if len(detectedCards) == 2:
-        xCentroid[0][1].player = 1
-        xCentroid[3][1].player = 2
+        xCentroid[0][1].player = 0
+        xCentroid[3][1].player = 1
     else:
-        xCentroid[0][1].player = 1
-        xCentroid[3][1].player = 3
+        xCentroid[0][1].player = 0
+        xCentroid[3][1].player = 2
         
-        yCentroid[0][1].player = 2
-        yCentroid[3][1].player = 4
+        yCentroid[0][1].player = 1
+        yCentroid[3][1].player = 3
       
     return detectedCards
 
@@ -287,6 +266,10 @@ def showTextInImg(img, position, text):
     font = cv.FONT_HERSHEY_SIMPLEX  
     fontScale = 1
     color = (0, 255, 0)
+    
+    if text == "LOSER":
+        color = (0, 0, 255)
+        
     thickness = 2
     
     img = cv.putText(img, text, position, font, 
@@ -297,13 +280,13 @@ def announceRoundWinnerOrLoser(img, text, player, detectedCards):
     
     for detectedCard in detectedCards:
         if detectedCard.player == player:
-            cardPosition = detectedCard.quadrilateral.centroid
+            cardPosition = list(detectedCard.quadrilateral.centroid)
 
     if cardPosition == []:
         print("Could not show round winner")
         return  
     
-    cardPosition[0] = max(0, cardPosition[0] - 5)
+    cardPosition[0] = max(0, cardPosition[0] - 50)
     showTextInImg(img, cardPosition, text)
 
 # ===================================MAIN======================================
@@ -331,7 +314,7 @@ while True:
     # if len(detectedCards) == cardsPerRound:
 
     # Which card is which
-    detectedCards = identifyPossibleCards(frame, detectedPossibleCards, simple = True)
+    detectedCards = identifyPossibleCards(frame, detectedPossibleCards)
 
     # Only continues processing if there is the right number of cards on the table
     if len(detectedCards) == cardsPerRound:

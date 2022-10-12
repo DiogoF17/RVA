@@ -1,4 +1,5 @@
 import game.cards as cards
+from sys import exit
 
 cardsRules = {cards.TWO_CLUBS: {"number": 1, "value": 0},
               cards.THREE_CLUBS: {"number": 2, "value": 0},
@@ -105,15 +106,19 @@ class HeartsGame:
     
     def detectRoundLoser(self, round, cardsNames):        
         ownerOfTheGreatestCard, greatestCard = self.resolveRoundStart(round, cardsNames)
-        suitOfGreatestCard = cards.getCardSuit(ownerOfTheGreatestCard)
+        suitOfGreatestCard = cards.getCardSuit(greatestCard)
         
         currentPlayer = ownerOfTheGreatestCard
         for _ in range(1, self.numberOfPlayers - 1):
             currentPlayer = (currentPlayer + 1) % self.numberOfPlayers
-            currentPlayerCard = self.detectPlayerCard(currentPlayer)
+            currentPlayerCard = self.detectPlayerCard(currentPlayer, round)
             
             suitOfCurrentCard = cards.getCardSuit(currentPlayerCard)
-            if suitOfGreatestCard == suitOfCurrentCard and cards[currentPlayerCard]["number"] > cards[greatestCard]["number"]:
+            print(suitOfCurrentCard)
+            print(suitOfGreatestCard)
+            print(cardsRules[currentPlayerCard]["number"])
+            print(cardsRules[greatestCard]["number"])
+            if suitOfGreatestCard == suitOfCurrentCard and cardsRules[currentPlayerCard]["number"] > cardsRules[greatestCard]["number"]:
                 ownerOfTheGreatestCard = currentPlayer
                 greatestCard = currentPlayerCard
                 suitOfGreatestCard = suitOfCurrentCard
@@ -142,7 +147,7 @@ class HeartsGame:
     def detectPlayerCard(self, player, round):
         for card in round:
             if card.player == player:
-                return card
+                return card.name
             
         exit(f"ERROR! Couldn't determine player {player} card")
 

@@ -39,7 +39,7 @@ class Game:
         self.game.gameRound(cards)
         
     def getRoundWinnerOrLoser(self):
-        if isinstance(self.game, heartsGame.Hearts):
+        if isinstance(self.game, heartsGame.HeartsGame):
             return "LOSER", self.game.getRoundLoser()
         else:
             return "WINNER", self.game.getRoundWinner()

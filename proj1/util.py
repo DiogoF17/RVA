@@ -76,10 +76,10 @@ def orderCoordinates(quadrilateral):
 def getRankSuitImgFromCardImg(img):
     height, width, _ = img.shape
     
-    numberOfPixelsHorizontal = math.floor(width * 0.17)
+    numberOfPixelsHorizontal = 80
     numberOfPixelsVertical = math.floor(height * 0.3)
 
-    rankSuitImg = img[:numberOfPixelsVertical, 10:80, :]
+    rankSuitImg = img[:numberOfPixelsVertical, 10:numberOfPixelsHorizontal, :]
 
     return cv.resize(cv.resize(rankSuitImg, [33, 62]), (0,0), fx=4, fy=4)
 
@@ -88,7 +88,7 @@ def identifyRankAndSuit(img):
     grayImg = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
     _, binarizedImg = cv.threshold(grayImg, 180, 255, cv.THRESH_BINARY_INV)
     
-    cv.imshow("bin", binarizedImg)
+    # cv.imshow("bin", binarizedImg)
     
     # detect connected components
     numLabels, labels, stats, _ = cv.connectedComponentsWithStats(binarizedImg)
@@ -126,9 +126,20 @@ def identifyRankAndSuit(img):
     # card rank 10
     if len(boundingRects) == 3:
         rankX, rankY, rankWidth, rankHeight = boundingRects[0]
-        rankXB, _, rankWidthB, _ = boundingRects[1]
-        rankWidth = (rankXB + rankWidthB) - rankX
-
+        rankXB, rankYB, rankWidthB, rankHeightB = boundingRects[1]
+        
+        if rankXB > rankX:
+            rankWidth = (rankXB + rankWidthB) - rankX
+        else:
+            rankWidth = (rankX + rankWidth) - rankXB
+            rankX = rankXB
+        
+        if rankYB < rankY:
+            rankY = rankYB
+        
+        if rankHeight < rankHeightB:
+            rankHeight = rankHeightB
+        
         suitX, suitY, suitWidth, suitHeight = boundingRects[2]
     else:
         rankX, rankY, rankWidth, rankHeight = boundingRects[0]
@@ -142,8 +153,8 @@ def identifyRankAndSuit(img):
     suitImg = binarizedImg[suitY : suitY + suitHeight, suitX : suitX + suitWidth]
     suitImg = cv.resize(suitImg, [33, 62])
     
-    cv.imshow("Rank", rankImg)
-    cv.imshow("Suit", suitImg)
+    # cv.imshow("Rank", rankImg)
+    # cv.imshow("Suit", suitImg)
     
     # # draw bounding rect in rank suit img
     # for (x, y, width, height) in boundingRects:
