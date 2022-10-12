@@ -24,20 +24,6 @@ MIN_MATCH_FOR_FEATURE = 20
 
 def setUp():
     print("Setting up...")
-    # sift = cv.SIFT_create()
-    # load normal template
-    # for fileName in cards.templateCards:
-    #     img = cv.imread(fileName)
-    #     _, des = sift.detectAndCompute(img, None)
-    #     templateCards.append(templateCard.TemplateCard(cards.templateCards[fileName], img, des))
-
-    # load simple template
-    # for fileName in cards.templateCardsSimple:
-    #     img = cv.imread(fileName)
-    #     img = cv.resize(img, (0,0), fx=4, fy=4)
-    #     # img = binarize(img)
-    #     _, des = sift.detectAndCompute(img, None)
-    #     templateCardsSimple.append(templateCard.TemplateCard(cards.templateCardsSimple[fileName], img, des))
     
     # load ranks template
     for fileName in cards.templateCardsRanks:
@@ -86,8 +72,8 @@ def detectQuadrilaterals(components, overlapping = False):
         # or a certain accuracy is achieved, whichever occurs first.
         criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 100, 0.001)
         
-        # Refine the corners using cv2.cornerSubPix()
-        corners =np.int0(cv.cornerSubPix(component.mask,np.float32(coordinates[:,0]),(5,5),(-1,-1),criteria))
+        # Refine the corners of the cards
+        corners =np.int0(cv.cornerSubPix(component.mask, np.float32(coordinates[:, 0]), (5, 5), (-1, -1), criteria))
         
         quadrilateral = Quadrilateral(component.centroid, contours[0], corners)
         quadrilaterals.append(quadrilateral)
@@ -120,32 +106,19 @@ def calculateHomographyAndWarpImage(img, quadrilateral, coord_dst = np.array([[0
 
     return result
 
-def findBestTemplateMatch(possibleCard, simple = True):
+def findBestTemplateMatch(possibleCard):
     bestMatchValue = None
     bestMatchRank = None
     bestMatchSuit = None
 
-    # templateCardsToBeCompared = templateCards
-    # if simple:
-    #     templateCardsToBeCompared = templateCardsSimple
-
-    # possibleCard = binarize(possibleCard)
     cv.imshow("Image To Check", possibleCard)
-    # cv.imshow(f"Template", binarize(templateCardsToBeCompared[0].img))
 
     possibleCard = util.identifyRankAndSuit(possibleCard)
-    
     if possibleCard == None:
        return None, bestMatchValue
    
     possibleRank, possibleSuit = possibleCard
-    
-    print(possibleRank.shape)
-    print(templateCardsRanks[0].img.shape)
-    print(possibleSuit.shape)
-    print(templateCardsSuits[0].img.shape)
 
-    # print("\n############################################\n")
     for method in [cv.TM_CCOEFF, cv.TM_CCOEFF_NORMED, cv.TM_CCORR,
         cv.TM_CCORR_NORMED, cv.TM_SQDIFF, cv.TM_SQDIFF_NORMED]:
         
@@ -188,14 +161,6 @@ def findBestTemplateMatch(possibleCard, simple = True):
             # if(max_val >= MIN_MATCH_FOR_TEMPLATE and max_val > bestMatchValue):
             #     bestMatchValue = max_val
             #     bestMatchName = templateCardToBeCompared.name
-
-
-        # diffImg = cv.absdiff(binarize(templateCardToBeCompared.img), possibleCard)
-        # val = int(np.sum(diffImg)/255)
-
-        # if(val > bestMatchValue):
-        #     bestMatchValue = val
-        #     bestMatchName = templateCardToBeCompared.name
 
     return bestMatchRank + bestMatchSuit, bestMatchValue
 

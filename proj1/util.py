@@ -106,73 +106,46 @@ def identifyRankAndSuit(img):
         
         x, y, width, height = cv.boundingRect(contours[0])
         
-        # temp = abs(1 - width/height)
-        # if temp <= 0.3:
+        # differenceInPercentage = abs(1 - width/height)
+        # if differenceInPercentage <= 0.3:
         boundingRects.append([x, y, width, height])
-            # print(f"Width {width} | Height {height} | Temp {temp}")
+            # print(f"Width {width} | Height {height} | DifferenceInPercentage {differenceInPercentage}")
         # else:
             # cv.rectangle(img, (x, y), (x + width, y + height), (0, 0, 255), 2)
-            # print(f"Width2 {width} | Height2 {height} | Temp {temp}")
+            # print(f"Width2 {width} | Height2 {height} | DifferenceInPercentage {differenceInPercentage}")
 
-    # it has to be exatly a rank and a suit
-    # len(boundingRects) == 3 in case of rank 10
+    # it has to be exatly a rank or 2 in case of 10 and a suit
     if len(boundingRects) != 2 and len(boundingRects) != 3:
         return None
 
-    # sort by y value
+    # sort by y value and x value
     # y value of rank is less than suit
+    # on rank 10 the x of 1 is smaller than of 0
     boundingRects.sort(key = lambda x: (x[1], x[0]))
-
-    # dimensions of image
-    height, width, _ = img.shape
-
-    # padding = 10
     
     # card rank 10
     if len(boundingRects) == 3:
-        # img of rank
         rankX, rankY, rankWidth, rankHeight = boundingRects[0]
-        rankXB, _,    rankWidthB, rankHeightB = boundingRects[1]
-        
-        # added padding and assured that it not exceeded image dimensions
-        # rankX1 = max(0, rankX - padding)
-        # rankY1 = max(0, rankY - padding)
-        # rankX2 = min(width - 1, rankX + rankWidth + padding)
-        # rankY2 = min(height - 1, rankY + rankHeight + padding)
-        # rankImg = img[rankY1 : rankY2, rankX1 : rankX2, :]
-        rankImg = binarizedImg[rankY : rankY+rankHeight, rankX : rankXB + rankWidthB]
+        rankXB, _, rankWidthB, _ = boundingRects[1]
+        rankWidth = (rankXB + rankWidthB) - rankX
 
         suitX, suitY, suitWidth, suitHeight = boundingRects[2]
     else:
-        # img of rank
         rankX, rankY, rankWidth, rankHeight = boundingRects[0]
-        # added padding and assured that it not exceeded image dimensions
-        # rankX1 = max(0, rankX - padding)
-        # rankY1 = max(0, rankY - padding)
-        # rankX2 = min(width - 1, rankX + rankWidth + padding)
-        # rankY2 = min(height - 1, rankY + rankHeight + padding)
-        # rankImg = img[rankY1 : rankY2, rankX1 : rankX2, :]
-        rankImg = binarizedImg[rankY : rankY+rankHeight, rankX : rankX + rankWidth]
-
         suitX, suitY, suitWidth, suitHeight = boundingRects[1]
         
+    # img of rank
+    rankImg = binarizedImg[rankY : rankY + rankHeight, rankX : rankX + rankWidth]
     rankImg = cv.resize(rankImg, [33, 62])
     
     # img of suit
-    # suitX, suitY, suitWidth, suitHeight = boundingRects[1]
-    # added padding and assured that it not exceeded image dimensions
-    # suitX1 = max(0, suitX - padding)
-    # suitY1 = max(0, suitY - padding)
-    # suitX2 = min(width - 1, suitX + suitWidth + padding)
-    # suitY2 = min(height - 1, suitY + suitHeight + padding)
-    # suitImg = img[suitY1 : suitY2, suitX1 : suitX2, :]
-    suitImg = binarizedImg[suitY : suitY+suitHeight, suitX : suitX + suitWidth]
+    suitImg = binarizedImg[suitY : suitY + suitHeight, suitX : suitX + suitWidth]
     suitImg = cv.resize(suitImg, [33, 62])
     
     cv.imshow("Rank", rankImg)
     cv.imshow("Suit", suitImg)
     
-    # draw bounding rect in rank suit img
+    # # draw bounding rect in rank suit img
     # for (x, y, width, height) in boundingRects:
     #     cv.rectangle(img, (x, y), (x + width, y + height), (0, 255, 0), 2)
 
