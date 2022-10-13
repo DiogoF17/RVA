@@ -15,7 +15,7 @@ def orderCoordinates(quadrilateral):
     # BL --- BR
     coords = [coord for coord in quadrilateral.verticesCoords]
     
-    sumCoords = [[coord[0] + coord[1], coord[1] - coord[0], coord] for coord in coords]
+    sumCoords = [[coord[0] + coord[1], - coord[1], coord] for coord in coords]
     sumCoords.sort(key = lambda x: (x[0], x[1]))
     
     topLeft = sumCoords[0][2]
@@ -25,7 +25,11 @@ def orderCoordinates(quadrilateral):
 
     # Horizontal Oriented
     if quadrilateral.width >= quadrilateral.height * 1.4:
-        # print("HORIZONTAL")
+        if sumCoords[2][1] > sumCoords[1][1]:
+            # print("HORIZONTAL1")
+            return [bottomLeft, bottomRight, topLeft, topRight]
+        
+        # print("HORIZONTAL2")
         return [bottomLeft, topLeft, bottomRight, topRight]
     # Vertical Oriented
     elif quadrilateral.width <= quadrilateral.height * 0.6:
@@ -86,8 +90,8 @@ def getRankSuitImgFromCardImg(img):
 def identifyRankAndSuit(img):
     # binarize img
     grayImg = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-    _, binarizedImg = cv.threshold(grayImg, 180, 255, cv.THRESH_BINARY_INV)
-    
+    _, binarizedImg = cv.threshold(grayImg, 0, 255, cv.THRESH_BINARY_INV + cv.THRESH_OTSU)
+
     # cv.imshow("bin", binarizedImg)
     
     # detect connected components

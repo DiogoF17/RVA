@@ -91,6 +91,7 @@ def detectPossibleCards(img):
 
 def calculateHomographyAndWarpImage(img, quadrilateral, coord_dst = np.array([[0, 0], [499, 0], [0, 725], [499, 725]])):
     coord_src = np.array(util.orderCoordinates(quadrilateral))
+    quadrilateral.verticesCoords = coord_src
 
     # coord_src and coord_dst are numpy arrays of points
     # in source and destination images. We need at least
@@ -113,10 +114,10 @@ def findBestTemplateMatch(possibleCard):
 
     possibleCard = util.identifyRankAndSuit(possibleCard)
     if possibleCard == None:
-       return None, bestMatchValue
+        return None, bestMatchValue
    
     possibleRank, possibleSuit = possibleCard
-
+    
     for templateCardRank in templateCardsRanks:
         
         res = cv.matchTemplate(possibleRank, templateCardRank.img,  cv.TM_CCORR_NORMED)
@@ -211,11 +212,11 @@ def templateMatching(possibleCard):
 
 def identifyPossibleCards(img, possibleCards, usingHomography = True):
     identifiedCards = []
-   
+
     if usingHomography:
         for possibleCard in possibleCards:
             possibleCard.homography = calculateHomographyAndWarpImage(img, possibleCard)
-                        
+   
             identifiedCard = templateMatching(possibleCard)
             # identifiedCard = featureMatching(possibleCard)
             if identifiedCard != None:
