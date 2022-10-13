@@ -123,13 +123,14 @@ class HeartsGame:
         suitOfGreatestCard = cards.getCardSuit(greatestCard)
         
         currentPlayer = ownerOfTheGreatestCard
-        for _ in range(1, self.numberOfPlayers - 1):
+        for _ in range(self.numberOfPlayers - 1):
             currentPlayer = (currentPlayer + 1) % self.numberOfPlayers
             currentPlayerCard = self.detectPlayerCard(currentPlayer, round)
             if isinstance(currentPlayerCard, Error):
                 return currentPlayerCard
             
             suitOfCurrentCard = cards.getCardSuit(currentPlayerCard)
+
             if suitOfGreatestCard == suitOfCurrentCard and cardsRules[currentPlayerCard]["number"] > cardsRules[greatestCard]["number"]:
                 ownerOfTheGreatestCard = currentPlayer
                 greatestCard = currentPlayerCard

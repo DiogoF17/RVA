@@ -315,6 +315,7 @@ while True:
 
     # Which card is which
     detectedCards = identifyPossibleCards(frame, detectedPossibleCards)
+    print(f"Detected Cards: {[[detectedCard.player, detectedCard.name] for detectedCard in detectedCards]}")
 
     # Only continues processing if there is the right number of cards on the table
     if len(detectedCards) == cardsPerRound:
@@ -323,7 +324,8 @@ while True:
 
         # verify if it is a new round
         if game.isNewRound(detectedCards):
-            print(f"New Round: {[[detectedCard.player, detectedCard.name] for detectedCard in detectedCards]}")
+            # print(f"New Round: {[[detectedCard.player, detectedCard.name] for detectedCard in detectedCards]}")
+            print("New Round")
 
             error = game.gameRound(detectedCards)
             if error != None:
