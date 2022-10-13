@@ -158,7 +158,7 @@ def templateMatching(possibleCard):
     matchName, matchValue = findBestTemplateMatch(imgToCheck)
     
     if(matchName != None):
-        print(f"Card Name: {matchName} | Match Value: {matchValue}")
+        # print(f"Card Name: {matchName} | Match Value: {matchValue}")
         return Card(possibleCard, matchName)
 
     return None
@@ -321,15 +321,29 @@ while True:
         # The person that played each card
         detectedCards = associatePlayersWithCards(detectedCards)
 
-        error = game.gameRound(detectedCards)
-        if error != None:
-            error.show()
-        else:
+        # verify if it is a new round
+        if game.isNewRound(detectedCards):
+            print(f"New Round: {[[detectedCard.player, detectedCard.name] for detectedCard in detectedCards]}")
+
+            error = game.gameRound(detectedCards)
+            if error != None:
+                error.show()
+            else:
+                text, roundWinnerOrLoser = game.getRoundWinnerOrLoser()
+                announceRoundWinnerOrLoser(frame, text, roundWinnerOrLoser, detectedCards)
+
+            if game.gameEnded():
+                winner = game.getGameWinner()
+                print("\nGame Over! Winner {winner}")
+                break
+        
+            print("\n###############################\n")
+        
+        # verify if is the same round
+        elif game.isSameRound(detectedCards):
             text, roundWinnerOrLoser = game.getRoundWinnerOrLoser()
             announceRoundWinnerOrLoser(frame, text, roundWinnerOrLoser, detectedCards)
 
-        print("###############################")
-    
     cv.imshow("video", frame)
     
     key = cv.waitKey(1)

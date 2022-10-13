@@ -35,6 +35,12 @@ class Game:
     def getCardsPerRound(self):
         return self.game.getCardsPerRound()
 
+    def isNewRound(self, round):
+        return self.game.isNewRound(round)
+
+    def isSameRound(self, round):        
+        return self.game.isSameRound(round)
+
     def gameRound(self, cards):
         return self.game.gameRound(cards)
         

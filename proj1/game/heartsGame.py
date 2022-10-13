@@ -69,16 +69,13 @@ class HeartsGame:
         
         self.lastRound = []
         self.roundLoser = None
-        self.score = {1: 0, 2: 0, 3: 0, 4: 0}
+        self.score = {0: 0, 1: 0, 2: 0, 3: 0}
 
     def getCardsPerRound(self):
         return self.numberOfPlayers
         
     def gameRound(self, round):
         cardsNames = [card.name for card in round]
-        
-        if not self.isNewRound(cardsNames):
-            return None
         
         if self.isFirstRound() and not self.isValidRound(cardsNames):
             return Error("ERROR! Can't play any Hearts or the Queen of Spades in the first round")
@@ -97,10 +94,17 @@ class HeartsGame:
             return False
         
         for card in round:
-            if card in self.lastRound:
+            if card.name in self.lastRound:
                 return False
         
-        return True     
+        return True
+
+    def isSameRound(self, round):        
+        for card in round:
+            if not card.name in self.lastRound:
+                return False
+        
+        return True
     
     def isValidRound(self, cardsNames):
         for card in cardsNames:
