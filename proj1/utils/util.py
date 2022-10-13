@@ -107,16 +107,8 @@ def identifyRankAndSuit(img):
     boundingRects = []
     for mask in masks:
         contours, _ = cv.findContours(image = mask, mode = cv.RETR_TREE, method = cv.CHAIN_APPROX_NONE)
-        
-        x, y, width, height = cv.boundingRect(contours[0])
-        
-        # differenceInPercentage = abs(1 - width/height)
-        # if differenceInPercentage <= 0.3:
+        x, y, width, height = cv.boundingRect(contours[0])        
         boundingRects.append([x, y, width, height])
-            # print(f"Width {width} | Height {height} | DifferenceInPercentage {differenceInPercentage}")
-        # else:
-            # cv.rectangle(img, (x, y), (x + width, y + height), (0, 0, 255), 2)
-            # print(f"Width2 {width} | Height2 {height} | DifferenceInPercentage {differenceInPercentage}")
 
     # it has to be exatly a rank or 2 in case of 10 and a suit
     if len(boundingRects) != 2 and len(boundingRects) != 3:
@@ -165,5 +157,3 @@ def identifyRankAndSuit(img):
     #     cv.rectangle(img, (x, y), (x + width, y + height), (0, 255, 0), 2)
 
     return rankImg, suitImg
-
-

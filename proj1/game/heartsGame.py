@@ -1,6 +1,5 @@
 import game.cards as cards
-from sys import exit
-from error import Error
+from utils.error import Error
 
 cardsRules = {cards.TWO_CLUBS: {"number": 1, "value": 0},
               cards.THREE_CLUBS: {"number": 2, "value": 0},

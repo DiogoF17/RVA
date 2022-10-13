@@ -4,10 +4,10 @@ import game.game as gamePackage
 import camera.remoteWebCam as remoteWebCamPackage
 import game.cards as cards
 import game.templateCard as templateCard
-from quadrilateral import Quadrilateral
-from card import Card
-import util
-from connectedComponent import ConnectedComponent
+from utils.quadrilateral import Quadrilateral
+from game.card import Card
+import utils.util as util
+from utils.connectedComponent import ConnectedComponent
 
 # =============================GLOBAL VARIABLES================================
 
@@ -18,7 +18,6 @@ QUIT_KEY = ord("q")
 
 MIN_AREA_OF_CARDS = 5000
 MIN_MATCH_FOR_TEMPLATE = 0.8
-MIN_MATCH_FOR_FEATURE = 20
 
 # ===============================FUNCTIONS=====================================
 
@@ -159,68 +158,18 @@ def templateMatching(possibleCard):
     matchName, matchValue = findBestTemplateMatch(imgToCheck)
     
     if(matchName != None):
-        # print(f"Card Name: {matchName} | Match Value: {matchValue}")
         return Card(possibleCard, matchName)
 
     return None
 
-# def featureMatching(possibleCard, simple = True):
-#     bestNumberOfMatches = -1
-#     bestMatchName = None
-
-#     imgToCheck = possibleCard.homography
-#     templateCardsToBeCompared = templateCards
-
-#     # get only the symbol of the card
-#     if simple:
-#         templateCardsToBeCompared = templateCardsSimple
-#         imgToCheck = util.getRankSuitImgFromCardImg(imgToCheck)
-#         util.identifyRankAndSuit(imgToCheck)
-    
-#     cv.imshow(f"Image To Check", imgToCheck)
-
-#     sift = cv.SIFT_create()
-    
-#     # imgToCheck = binarize(imgToCheck)
-#     _, des1 = sift.detectAndCompute(imgToCheck, None)
-    
-#     FLANN_INDEX_KDTREE = 1
-#     index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
-#     search_params = dict(checks = 50)
-     
-#     flann = cv.FlannBasedMatcher(index_params, search_params)   
- 
-#     for templateCardToBeCompared in templateCardsToBeCompared:
-        
-#         matches = flann.knnMatch(des1, templateCardToBeCompared.descriptor, k=2)
-        
-#         # store all the good matches as per Lowe's ratio test.
-#         good = []
-#         for m,n in matches:
-#             if m.distance < 0.7 * n.distance:
-#                 good.append(m)
-                
-#         if (len(good) >= MIN_MATCH_FOR_FEATURE and len(good) > bestNumberOfMatches):
-#             bestNumberOfMatches = len(good)
-#             bestMatchName = templateCardToBeCompared.name
-            
-#     if(bestMatchName != None):
-#         print(f"Card Name: {bestMatchName} | Nº Of Matches: {bestNumberOfMatches}")
-#         return Card(possibleCard, bestMatchName)
-
-#     return None
-
-def identifyPossibleCards(img, possibleCards, usingHomography = True):
+def identifyPossibleCards(img, possibleCards):
     identifiedCards = []
 
-    if usingHomography:
-        for possibleCard in possibleCards:
-            possibleCard.homography = calculateHomographyAndWarpImage(img, possibleCard)
-   
-            identifiedCard = templateMatching(possibleCard)
-            # identifiedCard = featureMatching(possibleCard)
-            if identifiedCard != None:
-                identifiedCards.append(identifiedCard)
+    for possibleCard in possibleCards:
+        possibleCard.homography = calculateHomographyAndWarpImage(img, possibleCard)
+        identifiedCard = templateMatching(possibleCard)
+        if identifiedCard != None:
+            identifiedCards.append(identifiedCard)
             
     return identifiedCards
 
@@ -263,32 +212,35 @@ def associatePlayersWithCards(detectedCards):
 
 # ---------------------------------------------------------------------
 
-def showTextInImg(img, position, text):
+def showTextInImg(img, position, text, color):
     font = cv.FONT_HERSHEY_SIMPLEX  
     fontScale = 1
-    color = (0, 255, 0)
-    
-    if text == "LOSER":
-        color = (0, 0, 255)
-        
     thickness = 2
     
     img = cv.putText(img, text, position, font, 
                     fontScale, color, thickness, cv.LINE_AA)
 
 def announceRoundWinnerOrLoser(img, text, player, detectedCards):
-    cardPosition = []
+    winnerOrLoserCard = None
+    winnerOrLoserColor = (0, 255, 0)
     
     for detectedCard in detectedCards:
         if detectedCard.player == player:
-            cardPosition = list(detectedCard.quadrilateral.centroid)
+            winnerOrLoserCard = detectedCard
 
-    if cardPosition == []:
+    if winnerOrLoserCard == None:
         print("Could not show round winner")
         return  
     
-    cardPosition[0] = max(0, cardPosition[0] - 50)
-    showTextInImg(img, cardPosition, text)
+    winnerOrLoserCard.quadrilateral.centroid = list(winnerOrLoserCard.quadrilateral.centroid)
+    winnerOrLoserCard.quadrilateral.centroid[0] = max(0, winnerOrLoserCard.quadrilateral.centroid[0] - 50)
+    
+    if text == "LOSER":
+        winnerOrLoserColor = (0, 0, 255)
+    
+    showTextInImg(img, winnerOrLoserCard.quadrilateral.centroid, text, winnerOrLoserColor)
+    # draw card border
+    cv.drawContours(img, winnerOrLoserCard.quadrilateral.contours, -1, winnerOrLoserColor, 3)
 
 # ===================================MAIN======================================
 
@@ -311,12 +263,9 @@ while True:
     # Where are the cards
     detectedPossibleCards = detectPossibleCards(frame)
 
-    # Only continues processing if there is the right number of cards on the table
-    # if len(detectedCards) == cardsPerRound:
-
     # Which card is which
     detectedCards = identifyPossibleCards(frame, detectedPossibleCards)
-    print(f"Detected Cards: {[[detectedCard.player, detectedCard.name] for detectedCard in detectedCards]}")
+    # print(f"Detected Cards: {[[detectedCard.player, detectedCard.name] for detectedCard in detectedCards]}")
 
     # Only continues processing if there is the right number of cards on the table
     if len(detectedCards) == cardsPerRound:
@@ -325,8 +274,7 @@ while True:
 
         # verify if it is a new round
         if game.isNewRound(detectedCards):
-            # print(f"New Round: {[[detectedCard.player, detectedCard.name] for detectedCard in detectedCards]}")
-            print("New Round")
+            print(f"New Round: {[[detectedCard.player, detectedCard.name] for detectedCard in detectedCards]}")
 
             error = game.gameRound(detectedCards)
             if error != None:
