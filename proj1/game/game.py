@@ -36,7 +36,7 @@ class Game:
         return self.game.getCardsPerRound()
 
     def gameRound(self, cards):
-        self.game.gameRound(cards)
+        return self.game.gameRound(cards)
         
     def getRoundWinnerOrLoser(self):
         if isinstance(self.game, heartsGame.HeartsGame):

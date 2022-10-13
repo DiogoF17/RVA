@@ -321,9 +321,12 @@ while True:
         # The person that played each card
         detectedCards = associatePlayersWithCards(detectedCards)
 
-        game.gameRound(detectedCards)
-        text, roundWinnerOrLoser = game.getRoundWinnerOrLoser()
-        announceRoundWinnerOrLoser(frame, text, roundWinnerOrLoser, detectedCards)
+        error = game.gameRound(detectedCards)
+        if error != None:
+            error.show()
+        else:
+            text, roundWinnerOrLoser = game.getRoundWinnerOrLoser()
+            announceRoundWinnerOrLoser(frame, text, roundWinnerOrLoser, detectedCards)
 
         print("###############################")
     
