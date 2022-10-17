@@ -37,8 +37,9 @@ for fname in images:
 cv.destroyAllWindows()
 
 # save calibration data
-calibrationData = cv.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
-np.save("calibrationData", calibrationData)
+_, mtx, dist, _, _ = cv.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
+
+np.savez("calibrationData", mtx=mtx, dist=dist)
 
 # calculate Re-projection Error
 # ret, mtx, dist, rvecs, tvecs = cv.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)

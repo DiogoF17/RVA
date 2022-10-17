@@ -8,6 +8,7 @@ from utils.quadrilateral import Quadrilateral
 from game.card import Card
 import utils.util as util
 from utils.connectedComponent import ConnectedComponent
+from augmentedReality import showTrophy
 
 # =============================GLOBAL VARIABLES================================
 
@@ -251,6 +252,8 @@ camera = remoteWebCamPackage.RemoteWebCam()
 
 cardsPerRound = game.getCardsPerRound()
 
+gameOver = False
+
 while True:
     camera.nextFrame()
     if not camera.validFrame():
@@ -260,40 +263,44 @@ while True:
     
     frame = camera.getFrame()
     
-    # Where are the cards
-    detectedPossibleCards = detectPossibleCards(frame)
+    if not gameOver:
+        # Where are the cards
+        detectedPossibleCards = detectPossibleCards(frame)
 
-    # Which card is which
-    detectedCards = identifyPossibleCards(frame, detectedPossibleCards)
-    # print(f"Detected Cards: {[[detectedCard.player, detectedCard.name] for detectedCard in detectedCards]}")
+        # Which card is which
+        detectedCards = identifyPossibleCards(frame, detectedPossibleCards)
+        # print(f"Detected Cards: {[[detectedCard.player, detectedCard.name] for detectedCard in detectedCards]}")
 
-    # Only continues processing if there is the right number of cards on the table
-    if len(detectedCards) == cardsPerRound:
-        # The person that played each card
-        detectedCards = associatePlayersWithCards(detectedCards)
+        # Only continues processing if there is the right number of cards on the table
+        if len(detectedCards) == cardsPerRound:
+            # The person that played each card
+            detectedCards = associatePlayersWithCards(detectedCards)
 
-        # verify if it is a new round
-        if game.isNewRound(detectedCards):
-            print(f"New Round: {[[detectedCard.player, detectedCard.name] for detectedCard in detectedCards]}")
+            # verify if it is a new round
+            if game.isNewRound(detectedCards):
+                print(f"New Round: {[[detectedCard.player, detectedCard.name] for detectedCard in detectedCards]}")
 
-            error = game.gameRound(detectedCards)
-            if error != None:
-                error.show()
-            else:
+                error = game.gameRound(detectedCards)
+                if error != None:
+                    error.show()
+                else:
+                    text, roundWinnerOrLoser = game.getRoundWinnerOrLoser()
+                    announceRoundWinnerOrLoser(frame, text, roundWinnerOrLoser, detectedCards)
+
+                if game.gameEnded():
+                    winner = game.getGameWinner()
+                    gameOver = True
+                    print(f"\nGame Over! Winner {winner}")
+            
+                print("\n###############################\n")
+            
+            # verify if is the same round
+            elif game.isSameRound(detectedCards):
                 text, roundWinnerOrLoser = game.getRoundWinnerOrLoser()
                 announceRoundWinnerOrLoser(frame, text, roundWinnerOrLoser, detectedCards)
 
-            if game.gameEnded():
-                winner = game.getGameWinner()
-                print("\nGame Over! Winner {winner}")
-                break
-        
-            print("\n###############################\n")
-        
-        # verify if is the same round
-        elif game.isSameRound(detectedCards):
-            text, roundWinnerOrLoser = game.getRoundWinnerOrLoser()
-            announceRoundWinnerOrLoser(frame, text, roundWinnerOrLoser, detectedCards)
+    else:
+        showTrophy(frame)
 
     cv.imshow("video", frame)
     
