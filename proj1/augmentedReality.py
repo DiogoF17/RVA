@@ -3,12 +3,12 @@ import numpy as np
 
 # =============================GLOBAL VARIABLES================================
 
-REAL_MARKER_COORDS = np.float32([[0,0,0],[1,0,0],[1,1,0],[0,1,0]])
+REAL_MARKER_COORDS = np.float32([[0, 0, 0],[1, 0, 0],[1, 1, 0],[0, 1, 0]])
 
-CUBE_VERTICES = np.float32([[0,0,0], [0,1,0], [1,1,0], [1,0,0],
-                   [0,0,-1],[0,1,-1],[1,1,-1],[1,0,-1] ])
+CUBE_VERTICES = np.float32([[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0],
+                   [0, 0, -1], [0, 1, -1], [1, 1, -1], [1, 0, -1] ])
 
-# Load previously saved data
+# Load calibration data
 with np.load('camera/calibration/calibrationData.npz') as X:
     MTX, DIST = [X[i] for i in ('mtx','dist')]
 
@@ -17,12 +17,12 @@ with np.load('camera/calibration/calibrationData.npz') as X:
 def detectMarker(img):
     arucoDict = cv.aruco.Dictionary_get(cv.aruco.DICT_ARUCO_ORIGINAL)
     arucoParams = cv.aruco.DetectorParameters_create()
-    (corners, _, _) = cv.aruco.detectMarkers(img, arucoDict, parameters=arucoParams)
+    (corners, _, _) = cv.aruco.detectMarkers(img, arucoDict, parameters = arucoParams)
 
     if len(corners) == 0:
         return []
 
-    return np.float32(corners)[0,0,:]
+    return np.float32(corners)[0, 0, :]
 
 def poseEstimation(imageMarkerCoords):
 
@@ -32,20 +32,19 @@ def poseEstimation(imageMarkerCoords):
     return rvecs,tvecs
 
 def augment(img, rvecs, tvecs):
-    # project 3D points to image plane
+    # project 3D cube points to image plane
     imgpts, _ = cv.projectPoints(CUBE_VERTICES, rvecs, tvecs, MTX, DIST)
-
     imgpts = np.int32(imgpts).reshape(-1,2)
 
     # draw ground floor in green
     img = cv.drawContours(img, [imgpts[:4]],-1,(0,255,0),-3)
     
     # draw pillars in blue color
-    for i,j in zip(range(4),range(4,8)):
-        img = cv.line(img, tuple(imgpts[i]), tuple(imgpts[j]),(255),3)
+    for i, j in zip(range(4), range(4, 8)):
+        img = cv.line(img, tuple(imgpts[i]), tuple(imgpts[j]), (255), 3)
     
     # draw top layer in red color
-    img = cv.drawContours(img, [imgpts[4:]],-1,(0,0,255),3)
+    img = cv.drawContours(img, [imgpts[4:]], -1, (0, 0, 255), 3)
 
 
 # image = cv.imread("camera/calibration/images/IMG_20221016_105437.jpg")
