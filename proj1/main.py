@@ -253,6 +253,7 @@ camera = remoteWebCamPackage.RemoteWebCam()
 cardsPerRound = game.getCardsPerRound()
 
 gameOver = False
+winner = None
 
 while True:
     camera.nextFrame()
@@ -300,7 +301,7 @@ while True:
                 announceRoundWinnerOrLoser(frame, text, roundWinnerOrLoser, detectedCards)
 
     else:
-        showTrophy(frame)
+        frame = showTrophy(frame, winner)
 
     cv.imshow("video", frame)
     

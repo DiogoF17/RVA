@@ -12,6 +12,8 @@ CUBE_VERTICES = np.float32([[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0],
 with np.load('camera/calibration/calibrationData.npz') as X:
     MTX, DIST = [X[i] for i in ('mtx','dist')]
 
+WINNER_PHOTOS = [cv.imread(f"winnerPhotos/winner{i}.jpg") for i in range(0, 3)]
+
 # ===============================FUNCTIONS=====================================
 
 def detectMarker(img):
@@ -31,11 +33,33 @@ def poseEstimation(imageMarkerCoords):
 
     return rvecs, tvecs
 
-def augment(img, rvecs, tvecs):
+def augment(img, winner, rvecs, tvecs):
     # project 3D cube points to image plane
     imgpts, _ = cv.projectPoints(CUBE_VERTICES, rvecs, tvecs, MTX, DIST)
     imgpts = np.int32(imgpts).reshape(-1, 2)
 
+    drawTrophy(img, imgpts)
+    return drawWinnerPhoto(img, winner, imgpts[4:])
+
+def drawWinnerPhoto(img, winner, topCubeFace):
+    h,w,_ = WINNER_PHOTOS[winner].shape
+
+    (H, _) = cv.findHomography(np.array([[0,0],[0,h],[w,h],[w,0]]), topCubeFace)
+    warped = cv.warpPerspective(WINNER_PHOTOS[winner], H, (img.shape[1], img.shape[0]))
+
+    mask = np.zeros((img.shape[0], img.shape[1]), dtype="uint8")
+    cv.fillConvexPoly(mask, topCubeFace.astype("int32"), (255, 255, 255), cv.LINE_AA)
+
+    maskScaled = mask.copy() / 255.0
+    maskScaled = np.dstack([maskScaled] * 3)
+
+    warpedMultiplied = cv.multiply(warped.astype("float"), maskScaled)
+    imageMultiplied = cv.multiply(img.astype(float), 1.0 - maskScaled)
+    output = cv.add(warpedMultiplied, imageMultiplied).astype("uint8")
+
+    return output
+
+def drawTrophy(img, imgpts):
     # draw ground floor in green
     img = cv.drawContours(img, [imgpts[:4]], -1, (0, 255, 0), -3)
     
@@ -46,19 +70,12 @@ def augment(img, rvecs, tvecs):
     # draw top layer in red color
     img = cv.drawContours(img, [imgpts[4:]], -1, (0, 0, 255), 3)
 
-
-# image = cv.imread("camera/calibration/images/IMG_20221016_105437.jpg")
-
-# h,w,_ = image.shape
-
-# (H, _) = cv.findHomography(np.array([[0,0],[0,w],[h,w],[h,0]]), imgpts[4:])
-# warped = cv.warpPerspective(image, H, (img.shape[1], img.shape[0]))
-# cv.imshow("warped",warped)
-
-def showTrophy(frame):
+def showTrophy(frame, winner):
     imageMarkerCoords = detectMarker(frame)
 
     if len(imageMarkerCoords) != 0:
         rvecs, tvecs = poseEstimation(imageMarkerCoords)
 
-        augment(frame, rvecs, tvecs)
+        return augment(frame, winner, rvecs, tvecs)
+
+    return frame
