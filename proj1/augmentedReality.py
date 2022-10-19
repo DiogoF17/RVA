@@ -29,15 +29,15 @@ def poseEstimation(imageMarkerCoords):
     # Find the rotation and translation vectors.
     _, rvecs, tvecs = cv.solvePnP(REAL_MARKER_COORDS, imageMarkerCoords, MTX, DIST)
 
-    return rvecs,tvecs
+    return rvecs, tvecs
 
 def augment(img, rvecs, tvecs):
     # project 3D cube points to image plane
     imgpts, _ = cv.projectPoints(CUBE_VERTICES, rvecs, tvecs, MTX, DIST)
-    imgpts = np.int32(imgpts).reshape(-1,2)
+    imgpts = np.int32(imgpts).reshape(-1, 2)
 
     # draw ground floor in green
-    img = cv.drawContours(img, [imgpts[:4]],-1,(0,255,0),-3)
+    img = cv.drawContours(img, [imgpts[:4]], -1, (0, 255, 0), -3)
     
     # draw pillars in blue color
     for i, j in zip(range(4), range(4, 8)):
