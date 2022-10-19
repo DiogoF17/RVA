@@ -62,13 +62,14 @@ class HeartsGame:
 
         self.numberOfPlayers = 4
         
-        print("\n*******************************************\n")
-        
-        print("Selected Game: Hearts; Number Of Players: 4\n")
+        print("Selected Game: Hearts\nNumber Of Players: 4\n")
+
+        print("+++++++++++++++++++++++++++++++++++++++++++\n")
         
         self.lastRound = []
         self.roundLoser = None
         self.score = {0: 0, 1: 0, 2: 0, 3: 0}
+        self.gameOverValue = 5 # should be 100, 5 for test purposes
 
     def getCardsPerRound(self):
         return self.numberOfPlayers
@@ -76,8 +77,8 @@ class HeartsGame:
     def gameRound(self, round):
         cardsNames = [card.name for card in round]
         
-        if self.isFirstRound() and not self.isValidRound(cardsNames):
-            return Error("ERROR! Can't play any Hearts or the Queen of Spades in the first round")
+        if self.isFirstRound() and not self.isValidFirstRound(cardsNames):
+            return Error("Can't play any Hearts or the Queen of Spades in the first round")
         
         error = self.detectRoundLoser(round, cardsNames)
         if error != None:
@@ -89,23 +90,28 @@ class HeartsGame:
         return None
         
     def isNewRound(self, round):
+        # number of cards in the round must be equal to the number of players
         if len(round) != self.numberOfPlayers:
             return False
         
+        # verifies if some card was already played in the previous round
         for card in round:
             if card.name in self.lastRound:
                 return False
         
         return True
 
-    def isSameRound(self, round):        
+    def isSameRound(self, round): 
+        # verifies if the cards in round are the same of the previous one        
         for card in round:
             if not card.name in self.lastRound:
                 return False
         
         return True
     
-    def isValidRound(self, cardsNames):
+    def isValidFirstRound(self, cardsNames):
+        # according to game rules in the first round it can't 
+        # be played any of the heart cards and neither the queen of spades
         for card in cardsNames:
             suit = cards.getCardSuit(card)
             if suit == "HEARTS" or card == cards.QUEEN_SPADES:
@@ -113,7 +119,8 @@ class HeartsGame:
             
         return True
     
-    def detectRoundLoser(self, round, cardsNames):        
+    def detectRoundLoser(self, round, cardsNames):     
+        # obtains the player to make the first move in this round and his respective card   
         roundStart = self.resolveRoundStart(round, cardsNames)
         if isinstance(roundStart, Error):
             return roundStart
@@ -123,6 +130,7 @@ class HeartsGame:
         
         currentPlayer = ownerOfTheGreatestCard
         for _ in range(self.numberOfPlayers - 1):
+            # next player
             currentPlayer = (currentPlayer + 1) % self.numberOfPlayers
             currentPlayerCard = self.detectPlayerCard(currentPlayer, round)
             if isinstance(currentPlayerCard, Error):
@@ -130,6 +138,8 @@ class HeartsGame:
             
             suitOfCurrentCard = cards.getCardSuit(currentPlayerCard)
 
+            # verifies if the cards are of the same suit and if so which one is the bigger
+            # and updates the player that has the highest hand
             if suitOfGreatestCard == suitOfCurrentCard and cardsRules[currentPlayerCard]["number"] > cardsRules[greatestCard]["number"]:
                 ownerOfTheGreatestCard = currentPlayer
                 greatestCard = currentPlayerCard
@@ -163,24 +173,29 @@ class HeartsGame:
         return self.roundLoser == None
     
     def detectPlayerCard(self, player, round):
+        # gets the card of a specific player
         for card in round:
             if card.player == player:
                 return card.name
             
-        return Error(f"ERROR! Couldn't determine player {player} card")
+        return Error(f"Couldn't determine player {player} card")
 
     def detectPlayerOfCard(self, cardName, round):
+        # gets the player of a specific card
         for card in round:
             if card.name == cardName:
                 return card.player
             
-        return Error(f"ERROR! Couldn't determine player of {cardName}")
+        return Error(f"Couldn't determine player of {cardName}")
     
     def updatePlayersScore(self, cardsNames):
         scoreOnTheTable = self.computeScoreOnRound(cardsNames)
         self.score[self.roundLoser] += scoreOnTheTable
 
         print(f"Score On The Table: {scoreOnTheTable}")
+        print("\nCurrent Score:")
+        for i in range(len(self.score)):
+            print(f"Player {i}: {self.score[i]}")
     
     def computeScoreOnRound(self, cardsNames):
         score = 0
@@ -198,7 +213,7 @@ class HeartsGame:
 
     def gameEnded(self):
         for player in self.score:
-            if self.score[player] >= 100:
+            if self.score[player] >= self.gameOverValue:
                 return True
 
         return False
@@ -207,6 +222,7 @@ class HeartsGame:
         lowestScore = 1000 # very high number
         playerWithLowestScore = None
 
+        # according to game rules the winner is the one with lowest score
         for player in self.score:
             if self.score[player] < lowestScore:
                 lowestScore = self.score[player]

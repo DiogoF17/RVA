@@ -5,6 +5,7 @@ import cv2 as cv
 class RemoteWebCam:
     def __init__(self):
         self.url = self.getCameraUrl()
+        print("\n+++++++++++++++++++++++++++++++++++++++++++\n")
         
     def getCameraUrl(self):
         url = input("Camera URL: ")

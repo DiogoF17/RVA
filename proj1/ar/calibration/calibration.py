@@ -38,7 +38,6 @@ cv.destroyAllWindows()
 
 # save calibration data
 _, mtx, dist, _, _ = cv.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
-
 np.savez("calibrationData", mtx=mtx, dist=dist)
 
 # calculate Re-projection Error

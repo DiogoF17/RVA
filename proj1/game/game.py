@@ -1,5 +1,4 @@
 import game.heartsGame as heartsGame
-import game.whistGame as whistGame
 
 class Game:
     def __init__(self):
@@ -10,8 +9,8 @@ class Game:
         print("           SELECT GAME           ")
         print("=================================")
 
-        print("\n1) Whist Game")
-        print("2) Hearts Game\n")
+        print("\n1) Hearts Game")
+        print("0) Exit\n")
 
         option = -1
         while True:
@@ -22,15 +21,18 @@ class Game:
                 continue
 
             option = int(option)
-            if self.validOption(option, 2):
+            if self.validOption(option, 1):
                 break
 
             print("Invalid Option!")
 
-        return whistGame.WhistGame() if option == 1 else heartsGame.HeartsGame()
+        if option == 0:
+            exit()
+
+        return heartsGame.HeartsGame()
 
     def validOption(self, option, maxValue):
-        return option >= 1 and option <= maxValue
+        return option >= 0 and option <= maxValue
 
     def getCardsPerRound(self):
         return self.game.getCardsPerRound()

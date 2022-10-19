@@ -26,14 +26,11 @@ def orderCoordinates(quadrilateral):
     # Horizontal Oriented
     if quadrilateral.width >= quadrilateral.height * 1.4:
         if sumCoords[2][1] > sumCoords[1][1]:
-            # print("HORIZONTAL1")
             return [bottomLeft, bottomRight, topLeft, topRight]
         
-        # print("HORIZONTAL2")
         return [bottomLeft, topLeft, bottomRight, topRight]
     # Vertical Oriented
     elif quadrilateral.width <= quadrilateral.height * 0.6:
-        # print("VERTICAL")
         return [topLeft, topRight, bottomLeft, bottomRight]
     # Diamond Oriented
     else:
@@ -47,11 +44,9 @@ def orderCoordinates(quadrilateral):
             
             # Tilted to the right
             if abs(coords[-1][0] - coords[-2][0]) < abs(coords[-1][0] - coords[-3][0]):
-                # print("ALIGNED BUT TILTED TO THE RIGHT")
                 return [coords[0], coords[1], coords[2], coords[3]]
             # Tilted to the left
             else:
-                # print("ALIGNED BUT TILTED TO THE LEFT")
                 return [coords[2], coords[0], coords[1], coords[3]]
 
         # card is extremely inclined, almost horizontal
@@ -59,26 +54,22 @@ def orderCoordinates(quadrilateral):
 
             # Tilted to the right
             if coords[1][0] < coords[2][0]:
-                # print("EXTREMELY TILTED TO RIGHT")
                 return [coords[0], coords[2], coords[1], coords[3]]
             # Tilted to the left
             else:
-                # print("EXTREMELY TILTED TO LEFT")
                 return [coords[2], coords[0], coords[3], coords[1]]
 
         # card is normally inclined, almost vertical
         else:
             # Tilted to the right
             if coords[1][0] > coords[2][0]:
-                # print("NORMALLY TILTED TO RIGHT")
                 return [coords[0], coords[1], coords[2], coords[3]]
             # Tilted to the left
             else:
-                # print("NORMALLY TILTED TO LEFT")
                 return [coords[1], coords[0], coords[3], coords[2]]
 
 def getRankSuitImgFromCardImg(img):
-    height, width, _ = img.shape
+    height, _, _ = img.shape
     
     numberOfPixelsHorizontal = 80
     numberOfPixelsVertical = math.floor(height * 0.3)
@@ -91,8 +82,6 @@ def identifyRankAndSuit(img):
     # binarize img
     grayImg = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
     _, binarizedImg = cv.threshold(grayImg, 0, 255, cv.THRESH_BINARY_INV + cv.THRESH_OTSU)
-
-    # cv.imshow("bin", binarizedImg)
     
     # detect connected components
     numLabels, labels, stats, _ = cv.connectedComponentsWithStats(binarizedImg)
@@ -149,11 +138,4 @@ def identifyRankAndSuit(img):
     suitImg = binarizedImg[suitY : suitY + suitHeight, suitX : suitX + suitWidth]
     suitImg = cv.resize(suitImg, [33, 62])
     
-    # cv.imshow("Rank", rankImg)
-    # cv.imshow("Suit", suitImg)
-    
-    # # draw bounding rect in rank suit img
-    # for (x, y, width, height) in boundingRects:
-    #     cv.rectangle(img, (x, y), (x + width, y + height), (0, 255, 0), 2)
-
     return rankImg, suitImg

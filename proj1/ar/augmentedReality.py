@@ -9,7 +9,7 @@ CUBE_VERTICES = np.float32([[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0],
                    [0, 0, -1], [0, 1, -1], [1, 1, -1], [1, 0, -1] ])
 
 # Load calibration data
-with np.load('camera/calibration/calibrationData.npz') as X:
+with np.load('ar/calibration/calibrationData.npz') as X:
     MTX, DIST = [X[i] for i in ('mtx','dist')]
 
 WINNER_PHOTOS = [cv.imread(f"winnerPhotos/winner{i}.jpg") for i in range(0, 3)]
@@ -27,7 +27,6 @@ def detectMarker(img):
     return np.float32(corners)[0, 0, :]
 
 def poseEstimation(imageMarkerCoords):
-
     # Find the rotation and translation vectors.
     _, rvecs, tvecs = cv.solvePnP(REAL_MARKER_COORDS, imageMarkerCoords, MTX, DIST)
 
@@ -42,17 +41,21 @@ def augment(img, winner, rvecs, tvecs):
     return drawWinnerPhoto(img, winner, imgpts[4:])
 
 def drawWinnerPhoto(img, winner, topCubeFace):
-    h,w,_ = WINNER_PHOTOS[winner].shape
+    h, w, _ = WINNER_PHOTOS[winner].shape
 
+    # calculate homography to apply to winner photo
     (H, _) = cv.findHomography(np.array([[0,0],[0,h],[w,h],[w,0]]), topCubeFace)
     warped = cv.warpPerspective(WINNER_PHOTOS[winner], H, (img.shape[1], img.shape[0]))
 
+    # compute mask for winner photo
     mask = np.zeros((img.shape[0], img.shape[1]), dtype="uint8")
     cv.fillConvexPoly(mask, topCubeFace.astype("int32"), (255, 255, 255), cv.LINE_AA)
 
+    # transform from one channel to a three channel mask
     maskScaled = mask.copy() / 255.0
     maskScaled = np.dstack([maskScaled] * 3)
 
+    # joined game frame and winner photo
     warpedMultiplied = cv.multiply(warped.astype("float"), maskScaled)
     imageMultiplied = cv.multiply(img.astype(float), 1.0 - maskScaled)
     output = cv.add(warpedMultiplied, imageMultiplied).astype("uint8")
@@ -60,15 +63,17 @@ def drawWinnerPhoto(img, winner, topCubeFace):
     return output
 
 def drawTrophy(img, imgpts):
+    cubeColor = (255, 0, 0) # blue
+
     # draw ground floor in green
-    img = cv.drawContours(img, [imgpts[:4]], -1, (0, 255, 0), -3)
+    img = cv.drawContours(img, [imgpts[:4]], -1, cubeColor, -3)
     
-    # draw pillars in blue color
+    # draw edges in blue color
     for i, j in zip(range(4), range(4, 8)):
-        img = cv.line(img, tuple(imgpts[i]), tuple(imgpts[j]), (255), 3)
+        img = cv.line(img, tuple(imgpts[i]), tuple(imgpts[j]), cubeColor, 3)
     
     # draw top layer in red color
-    img = cv.drawContours(img, [imgpts[4:]], -1, (0, 0, 255), 3)
+    img = cv.drawContours(img, [imgpts[4:]], -1, cubeColor, 3)
 
 def showTrophy(frame, winner):
     imageMarkerCoords = detectMarker(frame)
